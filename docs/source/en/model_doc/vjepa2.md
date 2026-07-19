@@ -13,12 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2025-06-11 and added to Hugging Face Transformers on 2025-06-11.*
-
+*This model was published in HF papers on 2025-06-11 and contributed to Hugging Face Transformers on 2025-06-11.*
 
 <div style="float: right;">
     <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
         <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
         <img alt="FlashAttention" src="https://img.shields.io/badge/%E2%9A%A1%EF%B8%8E%20FlashAttention-eae0c8?style=flat">
     </div>
@@ -34,22 +32,20 @@ rendered properly in your Markdown viewer.
 
 You can find all original V-JEPA2 checkpoints under the [V-JEPA 2](https://huggingface.co/collections/facebook/v-jepa-2-6841bad8413014e185b497a6) collection.
 
-
 This model was contributed by [koustuvs](https://huggingface.co/koustuvs), [yonigozlan](https://huggingface.co/yonigozlan) and [qubvel](https://huggingface.co/qubvel-hf). The original code can be found [here](https://github.com/facebookresearch/vjepa2).
 
 ## Usage example
 
 The snippet below shows how to load the V-JEPA 2 model for feature extraction using the `AutoModel` class.
 
-```py
-import torch
-from torchcodec.decoders import VideoDecoder
+```python
 import numpy as np
+from torchcodec.decoders import VideoDecoder
+
 
 processor = AutoVideoProcessor.from_pretrained("facebook/vjepa2-vitl-fpc64-256")
 model = AutoModel.from_pretrained(
     "facebook/vjepa2-vitl-fpc64-256",
-    torch_dtype=torch.float16,
     device_map="auto",
     attn_implementation="sdpa"
 )
@@ -72,18 +68,17 @@ predictor_outputs = outputs.predictor_output.last_hidden_state
 V-JEPA 2 can also be finetuned for video classification. In the following snippet, we show how use finetuned on Something-Something-V2 video classification model.
 
 ```python
-import torch
 import numpy as np
-
+import torch
 from torchcodec.decoders import VideoDecoder
-from transformers import AutoVideoProcessor, AutoModelForVideoClassification, infer_device
 
-device = infer_device()
+from transformers import AutoModelForVideoClassification, AutoVideoProcessor
+
 
 # Load model and video preprocessor
 hf_repo = "facebook/vjepa2-vitl-fpc16-256-ssv2"
 
-model = AutoModelForVideoClassification.from_pretrained(hf_repo).to(device)
+model = AutoModelForVideoClassification.from_pretrained(hf_repo, device_map="auto")
 processor = AutoVideoProcessor.from_pretrained(hf_repo)
 
 # To load a video, sample the number of frames according to the model.

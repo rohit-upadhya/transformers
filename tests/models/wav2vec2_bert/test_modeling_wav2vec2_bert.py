@@ -31,7 +31,6 @@ from transformers.testing_utils import (
 from ...test_configuration_common import ConfigTester
 from ...test_modeling_common import (
     ModelTesterMixin,
-    _config_zero_init,
     floats_tensor,
     ids_tensor,
     random_attention_mask,
@@ -65,28 +64,27 @@ class Wav2Vec2BertModelTester:
         batch_size=13,
         seq_length=200,  # speech is longer
         is_training=False,
-        hidden_size=16,
-        feature_projection_input_dim=16,
+        hidden_size=120,
+        feature_projection_input_dim=10,
         num_conv_pos_embeddings=16,
         num_conv_pos_embedding_groups=2,
-        num_hidden_layers=2,
+        num_hidden_layers=4,
         num_attention_heads=2,
-        hidden_dropout_prob=0.1,
-        intermediate_size=20,
+        hidden_dropout_prob=0.0,
+        intermediate_size=216,
         layer_norm_eps=1e-5,
         hidden_act="gelu",
         initializer_range=0.02,
-        mask_time_prob=0.5,
+        mask_time_prob=0.0,
         mask_time_length=2,
-        vocab_size=32,
+        vocab_size=16,
         do_stable_layer_norm=False,
         num_adapter_layers=2,
         adapter_stride=2,
-        tdnn_dim=(32, 32),
-        tdnn_kernel=(5, 3),
+        tdnn_dim=(4, 4),
+        tdnn_kernel=(3, 3),
         tdnn_dilation=(1, 2),
-        xvector_output_dim=32,
-        position_embeddings_type="relative",
+        xvector_output_dim=2,
         scope=None,
     ):
         self.parent = parent
@@ -115,7 +113,6 @@ class Wav2Vec2BertModelTester:
         self.tdnn_kernel = tdnn_kernel
         self.tdnn_dilation = tdnn_dilation
         self.xvector_output_dim = xvector_output_dim
-        self.position_embeddings_type = position_embeddings_type
 
         self.output_seq_length = self.seq_length
         self.encoder_seq_length = self.output_seq_length
@@ -234,7 +231,7 @@ class Wav2Vec2BertModelTester:
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             model.save_pretrained(tmpdirname)
-            model = Wav2Vec2BertModel.from_pretrained(tmpdirname, torch_dtype=torch.float16)
+            model = Wav2Vec2BertModel.from_pretrained(tmpdirname, dtype=torch.float16)
 
         model.to(torch_device)
         model.eval()
@@ -410,6 +407,8 @@ class Wav2Vec2BertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.Test
         else ()
     )
 
+    model_split_percents = [0.5, 0.8]
+
     pipeline_model_mapping = (
         {
             "audio-classification": Wav2Vec2BertForSequenceClassification,
@@ -420,13 +419,9 @@ class Wav2Vec2BertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.Test
         else {}
     )
 
-    test_pruning = False
-    test_headmasking = False
-    test_torchscript = False
-
     def setUp(self):
         self.model_tester = Wav2Vec2BertModelTester(self)
-        self.config_tester = ConfigTester(self, config_class=Wav2Vec2BertConfig, hidden_size=37)
+        self.config_tester = ConfigTester(self, config_class=Wav2Vec2BertConfig, hidden_size=32)
 
     def test_config(self):
         self.config_tester.run_common_tests()
@@ -576,54 +571,16 @@ class Wav2Vec2BertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.Test
         self.assertIsNotNone(hidden_states.grad)
         self.assertIsNotNone(attentions.grad)
 
-    def test_initialization(self):
-        config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
-
-        configs_no_init = _config_zero_init(config)
-        for model_class in self.all_model_classes:
-            model = model_class(config=configs_no_init)
-            for name, param in model.named_parameters():
-                uniform_init_parms = [
-                    "conv.weight",
-                    "conv.parametrizations.weight",
-                    "masked_spec_embed",
-                    "codevectors",
-                    "quantizer.weight_proj.weight",
-                    "project_hid.weight",
-                    "project_hid.bias",
-                    "project_q.weight",
-                    "project_q.bias",
-                    "pos_bias_v",
-                    "pos_bias_u",
-                    "pointwise_conv1",
-                    "pointwise_conv2",
-                    "feature_projection.projection.weight",
-                    "feature_projection.projection.bias",
-                    "objective.weight",
-                ]
-                if param.requires_grad:
-                    if any(x in name for x in uniform_init_parms):
-                        self.assertTrue(
-                            -1.0 <= ((param.data.mean() * 1e9).round() / 1e9).item() <= 1.0,
-                            msg=f"Parameter {name} of model {model_class} seems not properly initialized",
-                        )
-                    else:
-                        self.assertIn(
-                            ((param.data.mean() * 1e9).round() / 1e9).item(),
-                            [0.0, 1.0],
-                            msg=f"Parameter {name} of model {model_class} seems not properly initialized",
-                        )
-
     # overwrite from test_modeling_common
     def _mock_init_weights(self, module):
         if hasattr(module, "weight") and module.weight is not None:
-            module.weight.data.fill_(3)
+            module.weight.fill_(3)
         if hasattr(module, "weight_g") and module.weight_g is not None:
             module.weight_g.data.fill_(3)
         if hasattr(module, "weight_v") and module.weight_v is not None:
             module.weight_v.data.fill_(3)
         if hasattr(module, "bias") and module.bias is not None:
-            module.bias.data.fill_(3)
+            module.bias.fill_(3)
         if hasattr(module, "pos_bias_u") and module.pos_bias_u is not None:
             module.pos_bias_u.data.fill_(3)
         if hasattr(module, "pos_bias_v") and module.pos_bias_v is not None:

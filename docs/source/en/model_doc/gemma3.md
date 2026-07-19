@@ -14,11 +14,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2025-03-25 and added to Hugging Face Transformers on 2025-03-12.*
+*This model was published in HF papers on 2025-03-25 and contributed to Hugging Face Transformers on 2025-03-12.*
 
 <div style="float: right;">
     <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
         <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
     </div>
 </div>
@@ -39,15 +38,14 @@ The example below demonstrates how to generate text based on an image with [`Pip
 <hfoptions id="usage">
 <hfoption id="Pipeline">
 
-```py
-import torch
+```python
 from transformers import pipeline
+
 
 pipeline = pipeline(
     task="image-text-to-text",
     model="google/gemma-3-4b-pt",
     device=0,
-    torch_dtype=torch.bfloat16
 )
 pipeline(
     "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/pipeline-cat-chonk.jpeg",
@@ -58,13 +56,12 @@ pipeline(
 </hfoption>
 <hfoption id="AutoModel">
 
-```py
-import torch
+```python
 from transformers import AutoProcessor, Gemma3ForConditionalGeneration
+
 
 model = Gemma3ForConditionalGeneration.from_pretrained(
     "google/gemma-3-4b-it",
-    torch_dtype=torch.bfloat16,
     device_map="auto",
     attn_implementation="sdpa"
 )
@@ -100,28 +97,20 @@ print(processor.decode(output[0], skip_special_tokens=True))
 ```
 
 </hfoption>
-<hfoption id="transformers CLI">
-
-```bash
-echo -e "Plants create energy through a process known as" | transformers run --task text-generation --model google/gemma-3-1b-pt --device 0
-```
-
-</hfoption>
 </hfoptions>
 
 Quantization reduces the memory burden of large models by representing the weights in a lower precision. Refer to the [Quantization](../quantization/overview) overview for more available quantization backends.
 
 The example below uses [torchao](../quantization/torchao) to only quantize the weights to int4.
 
-```py
+```python
 # pip install torchao
-import torch
-from transformers import TorchAoConfig, Gemma3ForConditionalGeneration, AutoProcessor
+from transformers import AutoProcessor, Gemma3ForConditionalGeneration, TorchAoConfig
+
 
 quantization_config = TorchAoConfig("int4_weight_only", group_size=128)
 model = Gemma3ForConditionalGeneration.from_pretrained(
     "google/gemma-3-27b-it",
-    torch_dtype=torch.bfloat16,
     device_map="auto",
     quantization_config=quantization_config
 )
@@ -158,8 +147,9 @@ print(processor.decode(output[0], skip_special_tokens=True))
 
 Use the [AttentionMaskVisualizer](https://github.com/huggingface/transformers/blob/beb9b5b02246b9b7ee81ddf938f93f44cfeaad19/src/transformers/utils/attention_visualizer.py#L139) to better understand what tokens the model can and cannot attend to.
 
-```py
+```python
 from transformers.utils.attention_visualizer import AttentionMaskVisualizer
+
 
 visualizer = AttentionMaskVisualizer("google/gemma-3-4b-it")
 visualizer("<img>What is shown in this image?")
@@ -195,6 +185,7 @@ visualizer("<img>What is shown in this image?")
         },
     ]
     ```
+
 - Text passed to the processor should have a `<start_of_image>` token wherever an image should be inserted.
 - The processor has its own [`~ProcessorMixin.apply_chat_template`] method to convert chat messages to model inputs.
 - By default, images aren't cropped and only the base image is forwarded to the model. In high resolution images or images with non-square aspect ratios, artifacts can result because the vision encoder uses a fixed resolution of 896x896. To prevent these artifacts and improve performance during inference, set `do_pan_and_scan=True` to crop the image into multiple smaller patches and concatenate them with the base image embedding. You can disable pan and scan for faster inference.
@@ -209,6 +200,7 @@ visualizer("<img>What is shown in this image?")
     +   do_pan_and_scan=True,
         ).to(model.device)
     ```
+
 - For Gemma-3 1B checkpoint trained in text-only mode, use [`AutoModelForCausalLM`] instead.
 
     ```py
@@ -220,7 +212,6 @@ visualizer("<img>What is shown in this image?")
     )
     model = AutoModelForCausalLM.from_pretrained(
         "google/gemma-3-1b-pt",
-        torch_dtype=torch.bfloat16,
         device_map="auto",
         attn_implementation="sdpa"
     )
@@ -233,14 +224,17 @@ visualizer("<img>What is shown in this image?")
 ## Gemma3ImageProcessor
 
 [[autodoc]] Gemma3ImageProcessor
+    - preprocess
 
-## Gemma3ImageProcessorFast
+## Gemma3ImageProcessorPil
 
-[[autodoc]] Gemma3ImageProcessorFast
+[[autodoc]] Gemma3ImageProcessorPil
+    - preprocess
 
 ## Gemma3Processor
 
 [[autodoc]] Gemma3Processor
+    - __call__
 
 ## Gemma3TextConfig
 
@@ -268,8 +262,14 @@ visualizer("<img>What is shown in this image?")
 
 [[autodoc]] Gemma3ForConditionalGeneration
     - forward
+    - get_image_features
 
 ## Gemma3ForSequenceClassification
 
 [[autodoc]] Gemma3ForSequenceClassification
+    - forward
+
+## Gemma3TextForSequenceClassification
+
+[[autodoc]] Gemma3TextForSequenceClassification
     - forward

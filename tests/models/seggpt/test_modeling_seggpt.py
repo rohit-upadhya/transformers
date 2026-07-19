@@ -16,6 +16,7 @@
 import inspect
 import math
 import unittest
+from functools import cached_property
 
 from datasets import load_dataset
 
@@ -27,7 +28,7 @@ from transformers.testing_utils import (
     slow,
     torch_device,
 )
-from transformers.utils import cached_property, is_torch_available, is_vision_available
+from transformers.utils import is_torch_available, is_vision_available
 
 from ...test_configuration_common import ConfigTester
 from ...test_modeling_common import ModelTesterMixin, floats_tensor
@@ -43,7 +44,7 @@ if is_torch_available():
 
 
 if is_vision_available():
-    from transformers import SegGptImageProcessor
+    from transformers import SegGptImageProcessorPil
 
 
 class SegGptModelTester:
@@ -166,13 +167,8 @@ class SegGptModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     """
 
     all_model_classes = (SegGptModel, SegGptForImageSegmentation) if is_torch_available() else ()
-    fx_compatible = False
 
-    test_pruning = False
     test_resize_embeddings = False
-    test_head_masking = False
-    test_torchscript = False
-    test_torch_exportable = True
 
     pipeline_model_mapping = (
         {"feature-extraction": SegGptModel, "mask-generation": SegGptModel} if is_torch_available() else {}
@@ -350,7 +346,7 @@ def prepare_bool_masked_pos(config: SegGptConfig):
 class SegGptModelIntegrationTest(unittest.TestCase):
     @cached_property
     def default_image_processor(self):
-        return SegGptImageProcessor.from_pretrained("BAAI/seggpt-vit-large") if is_vision_available() else None
+        return SegGptImageProcessorPil.from_pretrained("BAAI/seggpt-vit-large") if is_vision_available() else None
 
     @slow
     def test_one_shot_inference(self):

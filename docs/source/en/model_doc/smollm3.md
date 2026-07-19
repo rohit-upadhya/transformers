@@ -13,11 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2025-07-08 and added to Hugging Face Transformers on 2025-06-25.*
+*This model was contributed to Hugging Face Transformers on 2025-06-25.*
 
 <div style="float: right;">
     <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
         <img alt="FlashAttention" src="https://img.shields.io/badge/%E2%9A%A1%EF%B8%8E%20FlashAttention-eae0c8?style=flat">
         <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
     </div>
@@ -36,13 +35,12 @@ The example below demonstrates how to generate text with [`Pipeline`], [`AutoMod
 <hfoption id="Pipeline">
 
 ```python
-import torch
 from transformers import pipeline
+
 
 pipe = pipeline(
     task="text-generation",
     model="HuggingFaceTB/SmolLM3-3B",
-    torch_dtype=torch.bfloat16,
     device_map=0
 )
 
@@ -58,12 +56,11 @@ print(outputs[0]["generated_text"][-1]['content'])
 <hfoption id="AutoModel">
 
 ```python
-import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 model = AutoModelForCausalLM.from_pretrained(
     "HuggingFaceTB/SmolLM3-3B",
-    torch_dtype=torch.bfloat16,
     device_map="auto",
     attn_implementation="sdpa"
 )
@@ -79,7 +76,7 @@ text = tokenizer.apply_chat_template(
     tokenize=False,
     add_generation_prompt=True
 )
-model_inputs = tokenizer([text], return_tensors="pt").to("cuda")
+model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
 
 generated_ids = model.generate(
     model_inputs.input_ids,
@@ -103,7 +100,7 @@ print(response)
 
 ```bash
 # pip install -U flash-attn --no-build-isolation
-transformers chat HuggingFaceTB/SmolLM3-3B --torch_dtype auto --attn_implementation flash_attention_2 --device 0
+transformers chat HuggingFaceTB/SmolLM3-3B --dtype auto --attn_implementation flash_attention_2 --device 0
 ```
 
 </hfoption>
@@ -115,12 +112,11 @@ The example below uses [bitsandbytes](../quantization/bitsandbytes) to quantize 
 
 ```python
 # pip install -U flash-attn --no-build-isolation
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
 
 quantization_config = BitsAndBytesConfig(
     load_in_4bit=True,
-    bnb_4bit_compute_dtype=torch.bfloat16,
     bnb_4bit_quant_type="nf4",
     bnb_4bit_use_double_quant=True,
 )
@@ -128,17 +124,15 @@ quantization_config = BitsAndBytesConfig(
 tokenizer = AutoTokenizer.from_pretrained("HuggingFaceTB/SmolLM3-3B")
 model = AutoModelForCausalLM.from_pretrained(
     "HuggingFaceTB/SmolLM3-3B",
-    torch_dtype=torch.bfloat16,
     device_map="auto",
     quantization_config=quantization_config,
     attn_implementation="flash_attention_2"
 )
 
-inputs = tokenizer("Gravity is the force", return_tensors="pt").to("cuda")
+inputs = tokenizer("Gravity is the force", return_tensors="pt").to(model.device)
 outputs = model.generate(**inputs, max_new_tokens=100)
 print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 ```
-
 
 ## Notes
 

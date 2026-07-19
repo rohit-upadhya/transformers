@@ -13,13 +13,8 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2024-01-04 and added to Hugging Face Transformers on 2025-08-01.*
+*This model was published in HF papers on 2024-01-04 and contributed to Hugging Face Transformers on 2025-08-01.*
 
-<div style="float: right;">
-    <div class="flex flex-wrap space-x-1">
-           <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-    </div>
-</div>
 
 # MM Grounding DINO
 
@@ -37,23 +32,23 @@ The example below demonstrates how to generate text based on an image with the [
 <hfoptions id="usage">
 <hfoption id="AutoModel">
 
-```py
+```python
 import torch
+
 from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 from transformers.image_utils import load_image
 
 
 # Prepare processor and model
 model_id = "openmmlab-community/mm_grounding_dino_tiny_o365v1_goldg_v3det"
-device = "cuda" if torch.cuda.is_available() else "cpu"
 processor = AutoProcessor.from_pretrained(model_id)
-model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
+model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id, device_map="auto")
 
 # Prepare inputs
 image_url = "http://images.cocodataset.org/val2017/000000039769.jpg"
 image = load_image(image_url)
 text_labels = [["a cat", "a remote control"]]
-inputs = processor(images=image, text=text_labels, return_tensors="pt").to(device)
+inputs = processor(images=image, text=text_labels, return_tensors="pt").to(model.device)
 
 # Run inference
 with torch.no_grad():
@@ -100,7 +95,6 @@ for box, score, labels in zip(result["boxes"], result["scores"], result["labels"
     |  [mm_grounding_dino_tiny_o365v1_goldg_v3det](https://huggingface.co/openmmlab-community/mm_grounding_dino_tiny_o365v1_goldg_v3det)           |   O365,GoldG,V3Det    |    33.0     |    36.0     |    45.9     | 40.5(+11.7) |    21.5    |    25.5    |    40.2    | 30.6(+10.5) |
     |  [mm_grounding_dino_tiny_o365v1_goldg_grit_v3det](https://huggingface.co/openmmlab-community/mm_grounding_dino_tiny_o365v1_goldg_grit_v3det) | O365,GoldG,GRIT,V3Det |    34.2     |    37.4     |    46.2     | 41.4(+12.6) |    23.6    |    27.6    |    40.5    | 31.9(+11.8) |
 
-
 - This implementation also supports inference for [LLMDet](https://github.com/iSEE-Laboratory/LLMDet). Here's a table of LLMDet models and their performance on LVIS (results from [official repo](https://github.com/iSEE-Laboratory/LLMDet)):
 
     |                             Model                         | Pre-Train Data            |  MiniVal APr | MiniVal APc | MiniVal APf | MiniVal AP  | Val1.0 APr | Val1.0 APc | Val1.0 APf |  Val1.0 AP  |
@@ -108,7 +102,6 @@ for box, score, labels in zip(result["boxes"], result["scores"], result["labels"
     | [llmdet_tiny](https://huggingface.co/iSEE-Laboratory/llmdet_tiny)   | (O365,GoldG,GRIT,V3Det) + GroundingCap-1M    | 44.7         | 37.3        | 39.5        | 50.7        | 34.9       | 26.0       | 30.1       | 44.3        |
     | [llmdet_base](https://huggingface.co/iSEE-Laboratory/llmdet_base)   | (O365,GoldG,V3Det) + GroundingCap-1M         | 48.3         | 40.8        | 43.1        | 54.3        | 38.5       | 28.2       | 34.3       | 47.8        |
     | [llmdet_large](https://huggingface.co/iSEE-Laboratory/llmdet_large) | (O365V2,OpenImageV6,GoldG) + GroundingCap-1M | 51.1         | 45.1        | 46.1        | 56.6        | 42.0       | 31.6       | 38.8       | 50.2        |
-
 
 ## MMGroundingDinoConfig
 

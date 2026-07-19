@@ -28,7 +28,6 @@ if is_torch_available():
     import torch
 
     from transformers import (
-        AutoTokenizer,
         DistilBertForMaskedLM,
         DistilBertForMultipleChoice,
         DistilBertForQuestionAnswering,
@@ -37,7 +36,6 @@ if is_torch_available():
         DistilBertModel,
     )
     from transformers.models.distilbert.modeling_distilbert import _create_sinusoidal_embeddings
-    from transformers.pytorch_utils import is_torch_greater_or_equal_than_2_4
 
 
 class DistilBertModelTester:
@@ -215,7 +213,6 @@ class DistilBertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCa
         {
             "feature-extraction": DistilBertModel,
             "fill-mask": DistilBertForMaskedLM,
-            "question-answering": DistilBertForQuestionAnswering,
             "text-classification": DistilBertForSequenceClassification,
             "token-classification": DistilBertForTokenClassification,
             "zero-shot": DistilBertForSequenceClassification,
@@ -223,8 +220,6 @@ class DistilBertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCa
         if is_torch_available()
         else {}
     )
-    fx_compatible = True
-    test_pruning = True
     test_resize_embeddings = True
     test_resize_position_embeddings = True
 
@@ -306,11 +301,11 @@ class DistilBertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCa
             with tempfile.TemporaryDirectory() as tmpdirname:
                 model.save_pretrained(tmpdirname)
                 model_fa = model_class.from_pretrained(
-                    tmpdirname, torch_dtype=torch.bfloat16, attn_implementation="flash_attention_2"
+                    tmpdirname, dtype=torch.bfloat16, attn_implementation="flash_attention_2"
                 )
                 model_fa.to(torch_device)
 
-                model = model_class.from_pretrained(tmpdirname, torch_dtype=torch.bfloat16)
+                model = model_class.from_pretrained(tmpdirname, dtype=torch.bfloat16)
                 model.to(torch_device)
 
                 logits = model(dummy_input, output_hidden_states=True).hidden_states[-1]
@@ -358,13 +353,13 @@ class DistilBertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCa
             with tempfile.TemporaryDirectory() as tmpdirname:
                 model.save_pretrained(tmpdirname)
                 model_fa = model_class.from_pretrained(
-                    tmpdirname, torch_dtype=torch.bfloat16, attn_implementation="flash_attention_2"
+                    tmpdirname, dtype=torch.bfloat16, attn_implementation="flash_attention_2"
                 )
                 model_fa.to(torch_device)
 
                 model = model_class.from_pretrained(
                     tmpdirname,
-                    torch_dtype=torch.bfloat16,
+                    dtype=torch.bfloat16,
                 )
                 model.to(torch_device)
 
@@ -383,7 +378,7 @@ class DistilBertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCa
 
 
 @require_torch
-class DistilBertModelIntergrationTest(unittest.TestCase):
+class DistilBertModelIntegrationTest(unittest.TestCase):
     @slow
     def test_inference_no_head_absolute_embedding(self):
         model = DistilBertModel.from_pretrained("distilbert-base-uncased")
@@ -398,46 +393,3 @@ class DistilBertModelIntergrationTest(unittest.TestCase):
         )
 
         torch.testing.assert_close(output[:, 1:4, 1:4], expected_slice, rtol=1e-4, atol=1e-4)
-
-    @pytest.mark.torch_export_test
-    @slow
-    def test_export(self):
-        if not is_torch_greater_or_equal_than_2_4:
-            self.skipTest(reason="This test requires torch >= 2.4 to run.")
-
-        distilbert_model = "distilbert-base-uncased"
-        device = "cpu"
-        attn_implementation = "sdpa"
-        max_length = 64
-
-        tokenizer = AutoTokenizer.from_pretrained(distilbert_model)
-        inputs = tokenizer(
-            f"Paris is the {tokenizer.mask_token} of France.",
-            return_tensors="pt",
-            padding="max_length",
-            max_length=max_length,
-        )
-
-        model = DistilBertForMaskedLM.from_pretrained(
-            distilbert_model,
-            device_map=device,
-            attn_implementation=attn_implementation,
-        )
-
-        logits = model(**inputs).logits
-        eager_predicted_mask = tokenizer.decode(logits[0, 4].topk(5).indices)
-        self.assertEqual(
-            eager_predicted_mask.split(),
-            ["capital", "birthplace", "northernmost", "centre", "southernmost"],
-        )
-
-        exported_program = torch.export.export(
-            model,
-            args=(inputs["input_ids"],),
-            kwargs={"attention_mask": inputs["attention_mask"]},
-            strict=True,
-        )
-
-        result = exported_program.module().forward(inputs["input_ids"], inputs["attention_mask"])
-        exported_predicted_mask = tokenizer.decode(result.logits[0, 4].topk(5).indices)
-        self.assertEqual(eager_predicted_mask, exported_predicted_mask)

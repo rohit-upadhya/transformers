@@ -8,13 +8,10 @@ specific language governing permissions and limitations under the License.
 ⚠️ Note that this file is in Markdown but contain specific syntax for our doc-builder (similar to MDX) that may not be
 rendered properly in your Markdown viewer.
 -->
-*This model was released on 2025-03-24 and added to Hugging Face Transformers on 2025-06-27.*
+*This model was published in HF papers on 2025-03-24 and contributed to Hugging Face Transformers on 2025-06-27.*
 
 # EoMT
 
-<div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-</div>
 
 ## Overview
 
@@ -39,7 +36,6 @@ Architecturally, EoMT introduces a small set of **learned queries** and a lightw
        alt="drawing" width="500"/>
 </div>
 
-
 The model supports semantic, instance, and panoptic segmentation using a unified architecture and task-specific post-processing.
 
 ## Usage Examples
@@ -61,12 +57,12 @@ import requests
 import torch
 from PIL import Image
 
-from transformers import EomtForUniversalSegmentation, AutoImageProcessor
+from transformers import AutoImageProcessor, EomtForUniversalSegmentation
 
 
 model_id = "tue-mps/ade20k_semantic_eomt_large_512"
 processor = AutoImageProcessor.from_pretrained(model_id)
-model = EomtForUniversalSegmentation.from_pretrained(model_id)
+model = EomtForUniversalSegmentation.from_pretrained(model_id, device_map="auto")
 
 image = Image.open(requests.get("http://images.cocodataset.org/val2017/000000039769.jpg", stream=True).raw)
 
@@ -109,12 +105,12 @@ import requests
 import torch
 from PIL import Image
 
-from transformers import EomtForUniversalSegmentation, AutoImageProcessor
+from transformers import AutoImageProcessor, EomtForUniversalSegmentation
 
 
 model_id = "tue-mps/coco_instance_eomt_large_640"
 processor = AutoImageProcessor.from_pretrained(model_id)
-model = EomtForUniversalSegmentation.from_pretrained(model_id)
+model = EomtForUniversalSegmentation.from_pretrained(model_id, device_map="auto")
 
 image = Image.open(requests.get("http://images.cocodataset.org/val2017/000000039769.jpg", stream=True).raw)
 
@@ -152,12 +148,12 @@ import requests
 import torch
 from PIL import Image
 
-from transformers import EomtForUniversalSegmentation, AutoImageProcessor
+from transformers import AutoImageProcessor, EomtForUniversalSegmentation
 
 
 model_id = "tue-mps/coco_panoptic_eomt_large_640"
 processor = AutoImageProcessor.from_pretrained(model_id)
-model = EomtForUniversalSegmentation.from_pretrained(model_id)
+model = EomtForUniversalSegmentation.from_pretrained(model_id, device_map="auto")
 
 image = Image.open(requests.get("http://images.cocodataset.org/val2017/000000039769.jpg", stream=True).raw)
 
@@ -193,9 +189,9 @@ plt.show()
     - post_process_instance_segmentation
     - post_process_panoptic_segmentation
 
-## EomtImageProcessorFast
+## EomtImageProcessorPil
 
-[[autodoc]] EomtImageProcessorFast
+[[autodoc]] EomtImageProcessorPil
     - preprocess
     - post_process_semantic_segmentation
     - post_process_instance_segmentation

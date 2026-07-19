@@ -39,7 +39,7 @@ Example for creating the old state dict file with Python:
     from llava.model.language_model.llava_llama import LlavaLlamaForCausalLM
 
     # load model
-    kwargs = {"device_map": "auto", "torch_dtype": torch.float16}
+    kwargs = {"device_map": "auto", "dtype": torch.float16}
     model = LlavaLlamaForCausalLM.from_pretrained("liuhaotian/llava-v1.5-7b", **kwargs)
 
     # load vision tower
@@ -82,7 +82,7 @@ def load_original_state_dict(model_id):
     return original_state_dict
 
 
-# used only for llava-interlave
+# used only for llava-interleave
 # for ex: Qwen/Qwen1.5-0.5B-Chat google/siglip-so400m-patch14-384 lmms-lab/llava-next-interleave-qwen-0.5b
 def convert_state_dict_to_hf(state_dict):
     new_state_dict = {}

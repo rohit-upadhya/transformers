@@ -9,13 +9,10 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 -->
-*This model was released on 2023-03-09 and added to Hugging Face Transformers on 2023-11-22.*
+*This model was published in HF papers on 2023-03-09 and contributed to Hugging Face Transformers on 2023-11-22.*
 
 # TVP
 
-<div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-</div>
 
 ## Overview
 
@@ -47,12 +44,13 @@ The [`TvpProcessor`] wraps [`BertTokenizer`] and [`TvpImageProcessor`] into a si
 encode the text and prepare the images respectively.
 
 The following example shows how to run temporal video grounding using [`TvpProcessor`] and [`TvpForVideoGrounding`].
+
 ```python
 import av
 import cv2
 import numpy as np
-import torch
 from huggingface_hub import hf_hub_download
+
 from transformers import AutoProcessor, TvpForVideoGrounding
 
 
@@ -112,7 +110,7 @@ def decode(container, sampling_rate, num_frames, clip_idx, num_clips, target_fps
     Returns:
         frames (tensor): decoded frames from the video.
     '''
-    assert clip_idx >= -2, "Not a valid clip_idx {}".format(clip_idx)
+    assert clip_idx >= -2, f"Not a valid clip_idx {clip_idx}"
     frames, fps = pyav_decode(container, sampling_rate, num_frames, clip_idx, num_clips, target_fps)
     clip_size = sampling_rate * num_frames / target_fps * fps
     index = np.linspace(0, clip_size - 1, num_frames)
@@ -123,7 +121,7 @@ def decode(container, sampling_rate, num_frames, clip_idx, num_clips, target_fps
 
 
 file = hf_hub_download(repo_id="Intel/tvp_demo", filename="AK2KG.mp4", repo_type="dataset")
-model = TvpForVideoGrounding.from_pretrained("Intel/tvp-base")
+model = TvpForVideoGrounding.from_pretrained("Intel/tvp-base", device_map="auto")
 
 decoder_kwargs = dict(
     container=av.open(file, metadata_errors="ignore"),
@@ -165,7 +163,6 @@ Tips:
 - Checkpoints for pre-trained [tvp-base](https://huggingface.co/Intel/tvp-base) is released.
 - Please refer to [Table 2](https://huggingface.co/papers/2303.04995) for TVP's performance on Temporal Video Grounding task.
 
-
 ## TvpConfig
 
 [[autodoc]] TvpConfig
@@ -175,9 +172,9 @@ Tips:
 [[autodoc]] TvpImageProcessor
     - preprocess
 
-## TvpImageProcessorFast
+## TvpImageProcessorPil
 
-[[autodoc]] TvpImageProcessorFast
+[[autodoc]] TvpImageProcessorPil
     - preprocess
 
 ## TvpProcessor

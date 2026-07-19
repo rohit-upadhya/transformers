@@ -13,13 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2019-12-24 and added to Hugging Face Transformers on 2022-12-07.*
+*This model was published in HF papers on 2019-12-24 and contributed to Hugging Face Transformers on 2022-12-07.*
 
 # Big Transfer (BiT)
 
-<div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-</div>
 
 ## Overview
 
@@ -36,6 +33,7 @@ The original code can be found [here](https://github.com/google-research/big_tra
 ## Usage tips
 
 - BiT models are equivalent to ResNetv2 in terms of architecture, except that: 1) all batch normalization layers are replaced by [group normalization](https://huggingface.co/papers/1803.08494),
+
 2) [weight standardization](https://huggingface.co/papers/1903.10520) is used for convolutional layers. The authors show that the combination of both is useful for training with large batch sizes, and has a significant
 impact on transfer learning.
 
@@ -59,9 +57,9 @@ If you're interested in submitting a resource to be included here, please feel f
 [[autodoc]] BitImageProcessor
     - preprocess
 
-## BitImageProcessorFast
+## BitImageProcessorPil
 
-[[autodoc]] BitImageProcessorFast
+[[autodoc]] BitImageProcessorPil
     - preprocess
 
 ## BitModel

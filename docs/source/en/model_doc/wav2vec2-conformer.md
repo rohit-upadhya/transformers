@@ -13,13 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2020-10-11 and added to Hugging Face Transformers on 2022-05-17.*
+*This model was published in HF papers on 2020-10-11 and contributed to Hugging Face Transformers on 2022-05-17.*
 
 # Wav2Vec2-Conformer
 
-<div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-</div>
 
 ## Overview
 
@@ -38,7 +35,7 @@ Note: Meta (FAIR) released a new version of [Wav2Vec2-BERT 2.0](https://huggingf
 
 - Wav2Vec2-Conformer follows the same architecture as Wav2Vec2, but replaces the *Attention*-block with a *Conformer*-block
   as introduced in [Conformer: Convolution-augmented Transformer for Speech Recognition](https://huggingface.co/papers/2005.08100).
-- For the same number of layers, Wav2Vec2-Conformer requires more parameters than Wav2Vec2, but also yields 
+- For the same number of layers, Wav2Vec2-Conformer requires more parameters than Wav2Vec2, but also yields
 an improved word error rate.
 - Wav2Vec2-Conformer uses the same tokenizer and feature extractor as Wav2Vec2.
 - Wav2Vec2-Conformer can use either no relative position embeddings, Transformer-XL-like position embeddings, or

@@ -13,20 +13,14 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2023-12-01 and added to Hugging Face Transformers on 2024-03-05.*
+*This model was published in HF papers on 2023-12-01 and contributed to Hugging Face Transformers on 2024-03-05.*
 
-<div style="float: right;">
-  <div class="flex flex-wrap space-x-1">
-    <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-  </div>
-</div>
 
 # Mamba
 
 [Mamba](https://huggingface.co/papers/2312.00752) is a selective structured state space model (SSMs) designed to work around Transformers computational inefficiency when dealing with long sequences.  It is a completely attention-free architecture, and comprised of a combination of H3 and gated MLP blocks (Mamba block). Mamba's "content-based reasoning" allows it to focus on specific parts of an input depending on the current token. Mamba also uses a new hardware-aware parallel algorithm to compensate for the lack of convolutional operations. As a result, Mamba has fast inference and can scale to very long sequences.
 
 You can find all the original Mamba checkpoints under the [State Space Models](https://huggingface.co/state-spaces) organization.
-
 
 > [!TIP]
 > This model was contributed by [Molbap](https://huggingface.co/Molbap) and [AntonV](https://huggingface.co/AntonV).
@@ -37,14 +31,13 @@ The example below demonstrates how to generate text with [`Pipeline`], [`AutoMod
 <hfoptions id="usage">
 <hfoption id="Pipeline">
 
-```py
-import torch
+```python
 from transformers import pipeline
+
 
 pipeline = pipeline(
     task="text-generation",
     model="state-spaces/mamba-130m-hf",
-    torch_dtype=torch.float16,
     device=0
 )
 pipeline("Plants create energy through a process known as")
@@ -53,23 +46,16 @@ pipeline("Plants create energy through a process known as")
 </hfoption>
 <hfoption id="AutoModel">
 
-```py
-import torch  
-from transformers import AutoModelForCausalLM, AutoTokenizer  
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 tokenizer = AutoTokenizer.from_pretrained("state-spaces/mamba-130m-hf")
-model = AutoModelForCausalLM.from_pretrained("state-spaces/mamba-130m-hf", torch_dtype=torch.float16, device_map="auto",)  
-input_ids = tokenizer("Plants create energy through a process known as", return_tensors="pt").to("cuda")  
+model = AutoModelForCausalLM.from_pretrained("state-spaces/mamba-130m-hf", device_map="auto")
+input_ids = tokenizer("Plants create energy through a process known as", return_tensors="pt").to(model.device)
 
-output = model.generate(**input_ids)  
-print(tokenizer.decode(output[0], skip_special_tokens=True)
-```
-
-</hfoption>
-<hfoption id="transformers CLI">
-
-```bash
-echo -e "Plants create energy through a process known as" | transformers run --task text-generation --model state-spaces/mamba-130m-hf --device 0
+output = model.generate(**input_ids)
+print(tokenizer.decode(output[0], skip_special_tokens=True))
 ```
 
 </hfoption>
@@ -79,20 +65,22 @@ Quantization reduces the memory burden of large models by representing the weigh
 
 The example below uses [torchao](../quantization/torchao) to only quantize the weights to 4-bit integers.
 
-```py
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, TorchAoConfig
+```python
 from torchao.quantization import Int4WeightOnlyConfig
+
+from transformers import AutoModelForCausalLM, AutoTokenizer, TorchAoConfig
+
 
 quantization_config = Int4WeightOnlyConfig(group_size=128)
 quantization_config = TorchAoConfig(quant_type=quant_config)
 tokenizer = AutoTokenizer.from_pretrained("state-spaces/mamba-2.8b-hf")
-model = AutoModelForCausalLM.from_pretrained("state-spaces/mamba-2.8b-hf", torch_dtype=torch.bfloat16, quantization_config=quantization_config, device_map="auto",)
-input_ids = tokenizer("Plants create energy through a process known as", return_tensors="pt").to("cuda")
+model = AutoModelForCausalLM.from_pretrained("state-spaces/mamba-2.8b-hf", quantization_config=quantization_config, device_map="auto")
+input_ids = tokenizer("Plants create energy through a process known as", return_tensors="pt").to(model.device)
 
 output = model.generate(**input_ids)
 print(tokenizer.decode(output[0], skip_special_tokens=True))
 ```
+
 ## Notes
 
 - The current implementation uses the original CUDA kernels. The FlashAttention equivalent implementation is hosted in the [mamba-ssm](https://github.com/state-spaces/mamba) and [causal_conv1d](https://github.com/Dao-AILab/causal-conv1d) repositories. Make sure to install them if your hardware supports it!
@@ -116,13 +104,6 @@ print(tokenizer.decode(output[0], skip_special_tokens=True))
   )
   trainer.train()
    ```
-
-## MambaCache
-
-[[autodoc]] MambaCache
-    - update_conv_state
-    - update_ssm_state
-    - reset
 
 ## MambaConfig
 

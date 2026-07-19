@@ -13,13 +13,8 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2024-06-27 and added to Hugging Face Transformers on 2025-06-02.*
+*This model was published in HF papers on 2024-06-27 and contributed to Hugging Face Transformers on 2025-06-02.*
 
-<div style="float: right;">
-    <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-    </div>
-</div>
 
 # ColQwen2
 
@@ -49,8 +44,7 @@ model_name = "vidore/colqwen2-v1.0-hf"
 
 model = ColQwen2ForRetrieval.from_pretrained(
     model_name,
-    torch_dtype=torch.bfloat16,
-    device_map="auto",  # "cpu", "cuda", or "mps" for Apple Silicon
+    device_map="auto",  # "cpu", "cuda", "xpu" or "mps" for Apple Silicon
     attn_implementation="flash_attention_2" if is_flash_attn_2_available() else "sdpa",
 )
 processor = ColQwen2Processor.from_pretrained(model_name)
@@ -123,7 +117,7 @@ bnb_config = BitsAndBytesConfig(
 model = ColQwen2ForRetrieval.from_pretrained(
     model_name,
     quantization_config=bnb_config,
-    device_map="cuda",
+    device_map="auto",
 ).eval()
 
 processor = ColQwen2Processor.from_pretrained(model_name)
@@ -157,6 +151,23 @@ print("Retrieval scores (query x image):")
 print(scores)
 ```
 
+You can also use checkpoints for `ColQwen2.5` that are **compatible with the ColQwen2 architecture**. This version of the model uses [Qwen2_5_VL](./qwen2_5_vl) as the backbone.
+
+```python
+from transformers import ColQwen2ForRetrieval, ColQwen2Processor
+from transformers.utils.import_utils import is_flash_attn_2_available
+
+
+model_name = "Sahil-Kabir/colqwen2.5-v0.2-hf" # An existing compatible checkpoint
+
+model = ColQwen2ForRetrieval.from_pretrained(
+    model_name,
+    device_map="auto",
+    attn_implementation="flash_attention_2" if is_flash_attn_2_available() else "sdpa"
+)
+processor = ColQwen2Processor.from_pretrained(model_name)
+```
+
 ## Notes
 
 - [`~ColQwen2Processor.score_retrieval`] returns a 2D tensor where the first dimension is the number of queries and the second dimension is the number of images. A higher score indicates more similarity between the query and image.
@@ -170,6 +181,7 @@ print(scores)
 ## ColQwen2Processor
 
 [[autodoc]] ColQwen2Processor
+    - __call__
 
 ## ColQwen2ForRetrieval
 

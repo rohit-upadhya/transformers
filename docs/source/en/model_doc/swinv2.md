@@ -13,13 +13,8 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2021-11-18 and added to Hugging Face Transformers on 2022-07-27.*
+*This model was published in HF papers on 2021-11-18 and contributed to Hugging Face Transformers on 2022-07-27.*
 
-<div style="float: right;">
-    <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-    </div>
-</div>
 
 # Swin Transformer V2
 
@@ -33,14 +28,13 @@ You can find official Swin Transformer V2 checkpoints under the [Microsoft](http
 <hfoptions id="usage">
 <hfoption id="Pipeline">
 
-```py
-import torch
+```python
 from transformers import pipeline
+
 
 pipeline = pipeline(
     task="image-classification",
     model="microsoft/swinv2-tiny-patch4-window8-256",
-    torch_dtype=torch.float16,
     device=0
 )
 pipeline("https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/pipeline-cat-chonk.jpeg")
@@ -50,11 +44,13 @@ pipeline("https://huggingface.co/datasets/huggingface/documentation-images/resol
 
 <hfoption id="AutoModel">
 
-```py
-import torch
+```python
 import requests
+import torch
 from PIL import Image
-from transformers import AutoModelForImageClassification, AutoImageProcessor
+
+from transformers import AutoImageProcessor, AutoModelForImageClassification
+
 
 image_processor = AutoImageProcessor.from_pretrained(
     "microsoft/swinv2-tiny-patch4-window8-256",
@@ -81,7 +77,7 @@ print(f"The predicted class label is: {predicted_class_label}")
 
 ## Notes
 
-- Swin Transformer V2 can pad the inputs for any input height and width divisible by `32`. 
+- Swin Transformer V2 can pad the inputs for any input height and width divisible by `32`.
 - Swin Transformer V2 can be used as a [backbone](../backbones). When `output_hidden_states = True`, it outputs both `hidden_states` and `reshaped_hidden_states`. The `reshaped_hidden_states` have a shape of `(batch, num_channels, height, width)` rather than `(batch_size, sequence_length, num_channels)`.
 
 ## Swinv2Config

@@ -11,7 +11,7 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2024-03-07 and added to Hugging Face Transformers on 2025-07-22.*
+*This model was published in HF papers on 2024-03-07 and contributed to Hugging Face Transformers on 2025-07-22.*
 
 <div style="float: right;">
     <div class="flex flex-wrap space-x-1">
@@ -28,16 +28,35 @@ rendered properly in your Markdown viewer.
 >
 > Click on the EfficientLoFTR models in the right sidebar for more examples of how to apply EfficientLoFTR to different computer vision tasks.
 
-The example below demonstrates how to match keypoints between two images with the [`AutoModel`] class.
+The example below demonstrates how to match keypoints between two images with [`Pipeline`] or the [`AutoModel`] class.
 
 <hfoptions id="usage">
+<hfoption id="Pipeline">
+
+```python
+from transformers import pipeline
+
+
+keypoint_matcher = pipeline(task="keypoint-matching", model="zju-community/efficientloftr")
+
+url_0 = "https://raw.githubusercontent.com/magicleap/SuperGluePretrainedNetwork/refs/heads/master/assets/phototourism_sample_images/united_states_capitol_98169888_3347710852.jpg"
+url_1 = "https://raw.githubusercontent.com/magicleap/SuperGluePretrainedNetwork/refs/heads/master/assets/phototourism_sample_images/united_states_capitol_26757027_6717084061.jpg"
+
+results = keypoint_matcher([url_0, url_1], threshold=0.9)
+print(results[0])
+# {'keypoint_image_0': {'x': ..., 'y': ...}, 'keypoint_image_1': {'x': ..., 'y': ...}, 'score': ...}
+```
+
+</hfoption>
 <hfoption id="AutoModel">
 
-```py
-from transformers import AutoImageProcessor, AutoModelForKeypointMatching
+```python
+import requests
 import torch
 from PIL import Image
-import requests
+
+from transformers import AutoImageProcessor, AutoModelForKeypointMatching
+
 
 url_image1 = "https://raw.githubusercontent.com/magicleap/SuperGluePretrainedNetwork/refs/heads/master/assets/phototourism_sample_images/united_states_capitol_98169888_3347710852.jpg"
 image1 = Image.open(requests.get(url_image1, stream=True).raw)
@@ -47,10 +66,10 @@ image2 = Image.open(requests.get(url_image2, stream=True).raw)
 images = [image1, image2]
 
 processor = AutoImageProcessor.from_pretrained("zju-community/efficientloftr")
-model = AutoModelForKeypointMatching.from_pretrained("zju-community/efficientloftr")
+model = AutoModelForKeypointMatching.from_pretrained("zju-community/efficientloftr", device_map="auto")
 
-inputs = processor(images, return_tensors="pt")
-with torch.no_grad():
+inputs = processor(images, return_tensors="pt").to(model.device)
+with torch.inference_mode():
     outputs = model(**inputs)
 
 # Post-process to get keypoints and matches
@@ -72,12 +91,13 @@ processed_outputs = processor.post_process_keypoint_matching(outputs, image_size
     import requests
     
     processor = AutoImageProcessor.from_pretrained("zju-community/efficientloftr")
-    model = AutoModelForKeypointMatching.from_pretrained("zju-community/efficientloftr")
+    model = AutoModelForKeypointMatching.from_pretrained("zju-community/efficientloftr", device_map="auto")
     
     # EfficientLoFTR requires pairs of images
     images = [image1, image2]
-    inputs = processor(images, return_tensors="pt")
-    outputs = model(**inputs)
+    inputs = processor(images, return_tensors="pt").to(model.device)
+    with torch.inference_mode():
+        outputs = model(**inputs)
     
     # Extract matching information
     keypoints = outputs.keypoints        # Keypoints in both images
@@ -127,24 +147,23 @@ processed_outputs = processor.post_process_keypoint_matching(outputs, image_size
 ## EfficientLoFTRImageProcessor
 
 [[autodoc]] EfficientLoFTRImageProcessor
+    - preprocess
+    - post_process_keypoint_matching
+    - visualize_keypoint_matching
 
-- preprocess
-- post_process_keypoint_matching
-- visualize_keypoint_matching
+## EfficientLoFTRImageProcessorPil
 
-<frameworkcontent>
-<pt>
+[[autodoc]] EfficientLoFTRImageProcessorPil
+    - preprocess
+    - post_process_keypoint_matching
+    - visualize_keypoint_matching
+
 ## EfficientLoFTRModel
 
 [[autodoc]] EfficientLoFTRModel
-
-- forward
+    - forward
 
 ## EfficientLoFTRForKeypointMatching
 
 [[autodoc]] EfficientLoFTRForKeypointMatching
-
-- forward
-
-</pt>
-</frameworkcontent>
+    - forward

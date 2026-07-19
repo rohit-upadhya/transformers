@@ -13,13 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2021-07-13 and added to Hugging Face Transformers on 2022-03-02.*
+*This model was published in HF papers on 2021-07-13 and contributed to Hugging Face Transformers on 2022-03-02.*
 
 # MaskFormer
 
-<div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-</div>
 
 <Tip>
 
@@ -44,7 +41,7 @@ This model was contributed by [francesco](https://huggingface.co/francesco). The
 
 ## Usage tips
 
--  MaskFormer's Transformer decoder is identical to the decoder of [DETR](detr). During training, the authors of DETR did find it helpful to use auxiliary losses in the decoder, especially to help the model output the correct number of objects of each class. If you set the parameter `use_auxiliary_loss` of [`MaskFormerConfig`] to `True`, then prediction feedforward neural networks and Hungarian losses are added after each decoder layer (with the FFNs sharing parameters).
+- MaskFormer's Transformer decoder is identical to the decoder of [DETR](detr). During training, the authors of DETR did find it helpful to use auxiliary losses in the decoder, especially to help the model output the correct number of objects of each class. If you set the parameter `use_auxiliary_loss` of [`MaskFormerConfig`] to `True`, then prediction feedforward neural networks and Hungarian losses are added after each decoder layer (with the FFNs sharing parameters).
 - If you want to train the model in a distributed environment across multiple nodes, then one should update the
   `get_num_masks` function inside in the `MaskFormerLoss` class of `modeling_maskformer.py`. When training on multiple nodes, this should be
   set to the average number of target masks across all nodes, as can be seen in the original implementation [here](https://github.com/facebookresearch/MaskFormer/blob/da3e60d85fdeedcb31476b5edd7d328826ce56cc/mask_former/modeling/criterion.py#L169).
@@ -64,6 +61,10 @@ This model was contributed by [francesco](https://huggingface.co/francesco). The
 
 [[autodoc]] models.maskformer.modeling_maskformer.MaskFormerForInstanceSegmentationOutput
 
+## MaskFormerDetrConfig
+
+[[autodoc]] MaskFormerDetrConfig
+
 ## MaskFormerConfig
 
 [[autodoc]] MaskFormerConfig
@@ -72,24 +73,14 @@ This model was contributed by [francesco](https://huggingface.co/francesco). The
 
 [[autodoc]] MaskFormerImageProcessor
     - preprocess
-    - encode_inputs
     - post_process_semantic_segmentation
     - post_process_instance_segmentation
     - post_process_panoptic_segmentation
 
-## MaskFormerImageProcessorFast
+## MaskFormerImageProcessorPil
 
-[[autodoc]] MaskFormerImageProcessorFast
+[[autodoc]] MaskFormerImageProcessorPil
     - preprocess
-    - post_process_semantic_segmentation
-    - post_process_instance_segmentation
-    - post_process_panoptic_segmentation
-
-## MaskFormerFeatureExtractor
-
-[[autodoc]] MaskFormerFeatureExtractor
-    - __call__
-    - encode_inputs
     - post_process_semantic_segmentation
     - post_process_instance_segmentation
     - post_process_panoptic_segmentation

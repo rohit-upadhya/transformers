@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import unittest
 
 import pytest
@@ -85,7 +86,7 @@ class Phi4MultimodalModelTester:
             hidden_size=32,
             num_attention_heads=8,
             intermediate_size=48,
-            depthwise_seperable_out_channel=128,
+            depthwise_separable_out_channel=128,
             nemo_conv_channels=128,
             initializer_range=1e-5,
         ),
@@ -110,8 +111,8 @@ class Phi4MultimodalModelTester:
         self.eos_token_id = eos_token_id
         self.image_token_id = image_token_id
         self.audio_token_id = audio_token_id
-        self.audio_config = audio_config
-        self.vision_config = vision_config
+        self.audio_config = copy.deepcopy(audio_config)
+        self.vision_config = copy.deepcopy(vision_config)
 
         self.is_training = is_training
         self.batch_size = batch_size
@@ -201,33 +202,25 @@ class Phi4MultimodalModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.
     """
 
     all_model_classes = (Phi4MultimodalForCausalLM, Phi4MultimodalModel) if is_torch_available() else ()
-    test_pruning = False
-    test_head_masking = False
+
     _is_composite = True
+    test_torch_exportable = False  # data-dependent multimodal placeholder mask
 
     def setUp(self):
         self.model_tester = Phi4MultimodalModelTester(self)
         self.config_tester = ConfigTester(self, config_class=Phi4MultimodalConfig)
 
-    @unittest.skip(reason="Unstable test")
-    def test_initialization(self):
-        pass
-
-    @unittest.skip(reason="Right padding not supported")
-    def test_flash_attn_2_inference_equivalence_right_padding(self):
-        pass
-
-    @unittest.skip(reason="Depending on input modalities, some params may not have gradients")
+    @pytest.mark.xfail(reason="This architecture seems to not compute gradients for some layer.")
     def test_training_gradient_checkpointing(self):
-        pass
+        super().test_training_gradient_checkpointing()
 
-    @unittest.skip(reason="Depending on input modalities, some params may not have gradients")
-    def test_training_gradient_checkpointing_use_reentrant(self):
-        pass
-
-    @unittest.skip(reason="Depending on input modalities, some params may not have gradients")
+    @pytest.mark.xfail(reason="This architecture seems to not compute gradients for some layer.")
     def test_training_gradient_checkpointing_use_reentrant_false(self):
-        pass
+        super().test_training_gradient_checkpointing_use_reentrant_false()
+
+    @pytest.mark.xfail(reason="This architecture seems to not compute gradients for some layer.")
+    def test_training_gradient_checkpointing_use_reentrant_true(self):
+        super().test_training_gradient_checkpointing_use_reentrant_true()
 
     @unittest.skip(reason="Test tries to instantiate dynamic cache with an arg")
     def test_multi_gpu_data_parallel_forward(self):
@@ -255,7 +248,7 @@ class Phi4MultimodalModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.
         reason="Supported only for text-only inputs (otherwise dynamic control flows for multimodal inputs)"
     )
     @pytest.mark.torch_compile_test
-    def test_generate_compile_model_forward(self):
+    def test_generate_compile_model_forward_fullgraph(self):
         pass
 
     @parameterized.expand([("random",), ("same",)])
@@ -285,8 +278,8 @@ class Phi4MultimodalModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.
 class Phi4MultimodalIntegrationTest(unittest.TestCase):
     checkpoint_path = "microsoft/Phi-4-multimodal-instruct"
     revision = "refs/pr/70"
-    image_url = "https://www.ilankelman.org/stopsigns/australia.jpg"
-    audio_url = "https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen2-Audio/audio/f2641_0_throatclearing.wav"
+    image_url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/tasks/australia.jpg"
+    audio_url = "https://huggingface.co/datasets/raushan-testing-hf/audio-test/resolve/main/f2641_0_throatclearing.wav"
 
     def setUp(self):
         # Currently, the Phi-4 checkpoint on the hub is not working with the latest Phi-4 code, so the slow integration tests
@@ -308,7 +301,7 @@ class Phi4MultimodalIntegrationTest(unittest.TestCase):
 
     def test_text_only_generation(self):
         model = AutoModelForCausalLM.from_pretrained(
-            self.checkpoint_path, revision=self.revision, torch_dtype=torch.float16, device_map=torch_device
+            self.checkpoint_path, revision=self.revision, dtype=torch.float16, device_map=torch_device
         )
 
         prompt = f"{self.user_token}What is the answer for 1+1? Explain it.{self.end_token}{self.assistant_token}"
@@ -327,7 +320,7 @@ class Phi4MultimodalIntegrationTest(unittest.TestCase):
 
     def test_vision_text_generation(self):
         model = AutoModelForCausalLM.from_pretrained(
-            self.checkpoint_path, revision=self.revision, torch_dtype=torch.float16, device_map=torch_device
+            self.checkpoint_path, revision=self.revision, dtype=torch.float16, device_map=torch_device
         )
 
         prompt = f"{self.user_token}<|image|>What is shown in this image?{self.end_token}{self.assistant_token}"
@@ -353,7 +346,7 @@ class Phi4MultimodalIntegrationTest(unittest.TestCase):
     @require_torch_large_accelerator
     def test_multi_image_vision_text_generation(self):
         model = AutoModelForCausalLM.from_pretrained(
-            self.checkpoint_path, revision=self.revision, torch_dtype=torch.float16, device_map=torch_device
+            self.checkpoint_path, revision=self.revision, dtype=torch.float16, device_map=torch_device
         )
 
         images = []
@@ -380,7 +373,7 @@ class Phi4MultimodalIntegrationTest(unittest.TestCase):
     @require_torchcodec
     def test_audio_text_generation(self):
         model = AutoModelForCausalLM.from_pretrained(
-            self.checkpoint_path, revision=self.revision, torch_dtype=torch.float16, device_map=torch_device
+            self.checkpoint_path, revision=self.revision, dtype=torch.float16, device_map=torch_device
         )
 
         prompt = f"{self.user_token}<|audio|>What is happening in this audio?{self.end_token}{self.assistant_token}"

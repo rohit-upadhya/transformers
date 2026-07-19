@@ -11,17 +11,15 @@ specific language governing permissions and limitations under the License.
 ⚠️ Note that this file is in Markdown but contains specific syntax for our doc-builder (similar to MDX) that may not be
 rendered properly in your Markdown viewer.
 -->
-*This model was released on 2024-12-13 and added to Hugging Face Transformers on 2024-12-13.*
+*This model was contributed to Hugging Face Transformers on 2024-12-13.*
 
 <div style="float: right;">
     <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
         <img alt="FlashAttention" src="https://img.shields.io/badge/%E2%9A%A1%EF%B8%8E%20FlashAttention-eae0c8?style=flat">
         <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
         <img alt="Tensor parallelism" src="https://img.shields.io/badge/Tensor%20parallelism-06b6d4?style=flat&logoColor=white">
     </div>
 </div>
-
 
 # Cohere 2
 
@@ -30,7 +28,6 @@ rendered properly in your Markdown viewer.
 This model is optimized for speed, cost-performance, and compute resources.
 
 You can find all the original Command-R checkpoints under the [Command Models](https://huggingface.co/collections/CohereForAI/command-models-67652b401665205e17b192ad) collection.
-
 
 > [!TIP]
 > Click on the Cohere models in the right sidebar for more examples of how to apply Cohere to different language tasks.
@@ -41,13 +38,12 @@ The example below demonstrates how to generate text with [`Pipeline`] or the [`A
 <hfoption id="Pipeline">
 
 ```python
-import torch
 from transformers import pipeline
 
+
 pipeline = pipeline(
-    task="text-generation", 
+    task="text-generation",
     model="CohereLabs/c4ai-command-r7b-12-2024",
-    torch_dtype=torch.float16,
     device_map=0
 )
 
@@ -61,14 +57,13 @@ pipeline(messages)
 <hfoption id="AutoModel">
 
 ```python
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 tokenizer = AutoTokenizer.from_pretrained("CohereLabs/c4ai-command-r7b-12-2024")
 model = AutoModelForCausalLM.from_pretrained(
-    "CohereLabs/c4ai-command-r7b-12-2024", 
-    torch_dtype=torch.float16, 
-    device_map="auto", 
+    "CohereLabs/c4ai-command-r7b-12-2024",
+    device_map="auto",
     attn_implementation="sdpa"
 )
 
@@ -90,7 +85,7 @@ print(tokenizer.decode(output[0], skip_special_tokens=True))
 
 ```bash
 # pip install -U flash-attn --no-build-isolation
-transformers-cli chat CohereLabs/c4ai-command-r7b-12-2024 --torch_dtype auto --attn_implementation flash_attention_2
+transformers chat CohereLabs/c4ai-command-r7b-12-2024 --dtype auto --attn_implementation flash_attention_2
 ```
 
 </hfoption>
@@ -101,16 +96,15 @@ Quantization reduces the memory burden of large models by representing the weigh
 The example below uses [bitsandbytes](../quantization/bitsandbytes.md) to quantize the weights to 4-bits.
 
 ```python
-import torch
-from transformers import BitsAndBytesConfig, AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
 
 bnb_config = BitsAndBytesConfig(load_in_4bit=True)
 tokenizer = AutoTokenizer.from_pretrained("CohereLabs/c4ai-command-r7b-12-2024")
 model = AutoModelForCausalLM.from_pretrained(
-    "CohereLabs/c4ai-command-r7b-12-2024", 
-    torch_dtype=torch.float16, 
-    device_map="auto", 
-    quantization_config=bnb_config, 
+    "CohereLabs/c4ai-command-r7b-12-2024",
+    device_map="auto",
+    quantization_config=bnb_config,
     attn_implementation="sdpa"
 )
 
@@ -136,10 +130,7 @@ print(tokenizer.decode(output[0], skip_special_tokens=True))
 [[autodoc]] Cohere2Model
     - forward
 
-
 ## Cohere2ForCausalLM
 
 [[autodoc]] Cohere2ForCausalLM
     - forward
-
-

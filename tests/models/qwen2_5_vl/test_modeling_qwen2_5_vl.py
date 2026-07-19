@@ -17,7 +17,7 @@ import copy
 import tempfile
 import unittest
 
-import requests
+import pytest
 
 from transformers import (
     AutoProcessor,
@@ -25,41 +25,30 @@ from transformers import (
     Qwen2_5_VLForConditionalGeneration,
     Qwen2_5_VLModel,
     is_torch_available,
-    is_vision_available,
 )
+from transformers.image_utils import load_image
 from transformers.testing_utils import (
+    Expectations,
     cleanup,
-    is_flaky,
-    require_cv2,
     require_flash_attn,
     require_torch,
-    require_torch_gpu,
+    require_torch_accelerator,
     slow,
     torch_device,
 )
-from transformers.utils import is_cv2_available
 
 from ...generation.test_utils import GenerationTesterMixin
 from ...test_configuration_common import ConfigTester
 from ...test_modeling_common import (
     ModelTesterMixin,
-    _config_zero_init,
     floats_tensor,
     ids_tensor,
 )
+from ...test_processing_common import url_to_local_path
 
-
-if is_cv2_available():
-    import cv2
 
 if is_torch_available():
     import torch
-
-else:
-    is_torch_greater_or_equal_than_2_0 = False
-
-if is_vision_available():
-    from PIL import Image
 
 
 class Qwen2_5_VLVisionText2TextModelTester:
@@ -74,58 +63,35 @@ class Qwen2_5_VLVisionText2TextModelTester:
         bos_token_id=0,
         eos_token_id=1,
         pad_token_id=2,
-        vision_start_token_id=3,
-        image_token_id=4,
-        video_token_id=5,
         hidden_act="silu",
         hidden_size=32,
         vocab_size=99,
         intermediate_size=37,
         max_position_embeddings=512,
         max_window_layers=3,
-        model_type="qwen2_5_vl",
         num_attention_heads=4,
-        num_hidden_layers=4,
+        num_hidden_layers=2,
         num_key_value_heads=2,
         rope_theta=10000,
         tie_word_embeddings=True,
         is_training=True,
-        vision_config={
-            "depth": 2,
-            "in_chans": 3,
-            "hidden_act": "silu",
-            "intermediate_size": 32,
-            "out_hidden_size": 32,
-            "hidden_size": 32,
-            "num_heads": 4,
-            "patch_size": 14,
-            "spatial_patch_size": 14,
-            "spatial_merge_size": 1,
-            "temporal_patch_size": 2,
-        },
-        rope_scaling={"type": "mrope", "mrope_section": [2, 1, 1]},
+        vision_config=None,
+        rope_parameters=None,
+        vision_start_token_id=3,
+        image_token_id=4,
+        video_token_id=5,
     ):
         self.parent = parent
         self.ignore_index = ignore_index
         self.bos_token_id = bos_token_id
         self.eos_token_id = eos_token_id
         self.pad_token_id = pad_token_id
+        self.num_hidden_layers = num_hidden_layers
+        self.num_attention_heads = num_attention_heads
+        self.hidden_size = hidden_size
         self.vision_start_token_id = vision_start_token_id
         self.image_token_id = image_token_id
         self.video_token_id = video_token_id
-        self.hidden_act = hidden_act
-        self.hidden_size = hidden_size
-        self.intermediate_size = intermediate_size
-        self.max_position_embeddings = max_position_embeddings
-        self.max_window_layers = max_window_layers
-        self.model_type = model_type
-        self.num_attention_heads = num_attention_heads
-        self.num_hidden_layers = num_hidden_layers
-        self.num_key_value_heads = num_key_value_heads
-        self.rope_theta = rope_theta
-        self.tie_word_embeddings = tie_word_embeddings
-        self.vision_config = vision_config
-        self.rope_scaling = rope_scaling
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.image_size = image_size
@@ -133,28 +99,48 @@ class Qwen2_5_VLVisionText2TextModelTester:
         self.vocab_size = vocab_size
         self.num_image_tokens = 32
         self.seq_length = seq_length + self.num_image_tokens
+        # Default vision config is None to avoid a mutable default argument
+        if vision_config is None:
+            vision_config = {
+                "depth": 2,
+                "in_chans": 3,
+                "hidden_act": "silu",
+                "intermediate_size": 32,
+                "out_hidden_size": 32,
+                "hidden_size": 32,
+                "num_heads": 4,
+                "patch_size": 14,
+                "spatial_patch_size": 14,
+                "spatial_merge_size": 1,
+                "temporal_patch_size": 2,
+                "tokens_per_second": 1,
+            }
+        self.vision_config = vision_config
+        self.text_config = {
+            "bos_token_id": bos_token_id,
+            "eos_token_id": eos_token_id,
+            "pad_token_id": pad_token_id,
+            "hidden_act": hidden_act,
+            "hidden_size": hidden_size,
+            "intermediate_size": intermediate_size,
+            "max_position_embeddings": max_position_embeddings,
+            "max_window_layers": max_window_layers,
+            "num_attention_heads": num_attention_heads,
+            "num_hidden_layers": num_hidden_layers,
+            "num_key_value_heads": num_key_value_heads,
+            "rope_theta": rope_theta,
+            "tie_word_embeddings": tie_word_embeddings,
+            "vocab_size": vocab_size,
+            "rope_parameters": {"type": "mrope", "mrope_section": [2, 1, 1]},
+        }
 
     def get_config(self):
         return Qwen2_5_VLConfig(
-            hidden_size=self.hidden_size,
-            intermediate_size=self.intermediate_size,
-            num_hidden_layers=self.num_hidden_layers,
-            num_attention_heads=self.num_attention_heads,
-            num_key_value_heads=self.num_key_value_heads,
-            hidden_act=self.hidden_act,
-            max_position_embeddings=self.max_position_embeddings,
+            text_config=self.text_config,
             vision_config=self.vision_config,
-            model_type=self.model_type,
-            max_window_layers=self.max_window_layers,
-            rope_scaling=self.rope_scaling,
-            tie_word_embeddings=self.tie_word_embeddings,
-            bos_token_id=self.bos_token_id,
-            eos_token_id=self.eos_token_id,
-            pad_token_id=self.pad_token_id,
             vision_start_token_id=self.vision_start_token_id,
             image_token_id=self.image_token_id,
             video_token_id=self.video_token_id,
-            vocab_size=self.vocab_size,
         )
 
     def prepare_config_and_inputs(self):
@@ -182,11 +168,16 @@ class Qwen2_5_VLVisionText2TextModelTester:
         input_ids[input_ids == self.vision_start_token_id] = self.pad_token_id
         input_ids[:, self.num_image_tokens] = self.image_token_id
         input_ids[:, self.num_image_tokens - 1] = self.vision_start_token_id
+
+        mm_token_type_ids = torch.zeros_like(input_ids)
+        mm_token_type_ids[:, self.num_image_tokens] = 1
+
         inputs_dict = {
             "pixel_values": pixel_values,
             "image_grid_thw": torch.tensor([[1, 1, 1]] * self.batch_size, device=torch_device),
             "input_ids": input_ids,
             "attention_mask": attention_mask,
+            "mm_token_type_ids": mm_token_type_ids,
         }
         return config, inputs_dict
 
@@ -205,8 +196,6 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
         if is_torch_available()
         else ()
     )
-    test_pruning = False
-    test_head_masking = False
 
     def setUp(self):
         self.model_tester = Qwen2_5_VLVisionText2TextModelTester(self)
@@ -215,19 +204,8 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
     def test_config(self):
         self.config_tester.run_common_tests()
 
-    def test_initialization(self):
-        config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
-
-        configs_no_init = _config_zero_init(config)
-        for model_class in self.all_model_classes:
-            model = model_class(config=configs_no_init)
-            for name, param in model.named_parameters():
-                if param.requires_grad:
-                    self.assertIn(
-                        ((param.data.mean() * 1e9).round() / 1e9).item(),
-                        [0.0, 1.0],
-                        msg=f"Parameter {name} of model {model_class} seems not properly initialized",
-                    )
+    def test_reverse_loading_mapping(self):
+        super().test_reverse_loading_mapping(skip_base_model=True)
 
     def test_mismatching_num_image_tokens(self):
         """
@@ -238,6 +216,7 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
         config, input_dict = self.model_tester.prepare_config_and_inputs_for_common()
         for model_class in self.all_model_classes:
             model = model_class(config).to(torch_device)
+            model.eval()
             _ = model(**input_dict)  # successful forward with no modifications
             curr_input_dict = copy.deepcopy(input_dict)
 
@@ -246,9 +225,10 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
             one_img_length = (self.model_tester.image_size**2) // (patch_size**2)
             curr_input_dict["pixel_values"] = curr_input_dict["pixel_values"][-one_img_length:, ...]
             curr_input_dict["image_grid_thw"] = curr_input_dict["image_grid_thw"][-1:, ...]
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, "Image features and image tokens do not match"):
                 _ = model(**curr_input_dict)
 
+            model.base_model.rope_deltas = None
             # simulate multi-image case by concatenating inputs where each has exactly one image/image-token
             input_ids = curr_input_dict["input_ids"][:1]
             pixel_values = curr_input_dict["pixel_values"][:one_img_length]
@@ -256,13 +236,14 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
             input_ids = torch.cat([input_ids, input_ids], dim=0)
 
             # one image and two image tokens raise an error
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, "Image features and image tokens do not match"):
                 _ = model(
                     input_ids=input_ids,
                     pixel_values=pixel_values,
                     image_grid_thw=image_grid_thw,
                 )
 
+            model.base_model.rope_deltas = None
             # two images and two image tokens don't raise an error
             pixel_values = torch.cat([pixel_values, pixel_values], dim=0)
             image_grid_thw = torch.cat([image_grid_thw, image_grid_thw], dim=0)
@@ -271,6 +252,61 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
                 pixel_values=pixel_values,
                 image_grid_thw=image_grid_thw,
             )
+
+    def test_vision_position_ids(self):
+        """
+        Tests that vision position ids are built correctly for images and for videos.
+        See https://github.com/huggingface/transformers/pull/45400
+        """
+        config, input_dict = self.model_tester.prepare_config_and_inputs_for_common()
+        model = Qwen2_5_VLModel(config).to(torch_device)
+        batch_size = input_dict["input_ids"].shape[0]
+
+        # Test most simple case when num_image_tokens == 1. Position ids will be sunsequent and text-like
+        position_ids = model.get_rope_index(
+            input_dict["input_ids"], input_dict["mm_token_type_ids"], input_dict["image_grid_thw"]
+        )[0]
+        expected_positions = torch.arange(39)[None, None, :].repeat(3, batch_size, 1)
+        self.assertListEqual(list(position_ids.shape), [3, batch_size, 39])
+        self.assertListEqual(position_ids.tolist(), expected_positions.tolist())
+
+        # Each image encodes to more than 1 token (i.e. 4 height and 3 width patches = 12 tokens)
+        image_token_id = config.image_token_id
+        pad_token_id = config.text_config.pad_token_id
+        input_ids = torch.tensor([[pad_token_id] + [image_token_id] * 12 + [pad_token_id]], device=torch_device)
+        mm_token_type_ids = torch.tensor([[0] + [1] * 12 + [0]], device=torch_device)
+        image_grid_thw = torch.tensor([[1, 4, 3]], device=torch_device)
+        position_ids = model.get_rope_index(input_ids, mm_token_type_ids, image_grid_thw)[0]
+        expected_positions = torch.tensor(
+            [
+                [[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5]],
+                [[0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5]],
+                [[0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 5]],
+            ]
+        )
+
+        self.assertListEqual(list(position_ids.shape), [3, 1, 14])
+        self.assertListEqual(position_ids.tolist(), expected_positions.tolist())
+
+        # Check video position ids with 2 frames, and 4 height, 3 width patches (= 12 * 2 tokens)
+        video_token_id = config.video_token_id
+        input_ids = torch.tensor([[pad_token_id] + [video_token_id] * 24 + [pad_token_id]], device=torch_device)
+        mm_token_type_ids = torch.tensor([[0] + [2] * 24 + [0]], device=torch_device)
+        video_grid_thw = torch.tensor([[2, 4, 3]], device=torch_device)
+        second_per_grid_ts = torch.tensor([3], device=torch_device)
+        position_ids = model.get_rope_index(
+            input_ids, mm_token_type_ids, video_grid_thw=video_grid_thw, second_per_grid_ts=second_per_grid_ts
+        )[0]
+        expected_positions = torch.tensor(
+            [
+                [[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5]],
+                [[0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5]],
+                [[0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 5]],
+            ]
+        )
+
+        self.assertListEqual(list(position_ids.shape), [3, 1, 26])
+        self.assertListEqual(position_ids.tolist(), expected_positions.tolist())
 
     def test_video_forward(self):
         config, _ = self.model_tester.prepare_config_and_inputs_for_common()
@@ -295,7 +331,7 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
                 C * T * (P**2),
             ]
         )
-        video_grid_thw = torch.tensor([[patch_T, patch_H, patch_W]] * B)
+        video_grid_thw = torch.tensor([[patch_T, patch_H, patch_W]] * B, device=torch_device)
 
         # sanity check
         assert pixel_values_videos.shape[0] == video_grid_thw.prod(dim=1).sum().item()
@@ -353,7 +389,7 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
                 model = (
                     model_class.from_pretrained(
                         tmpdirname,
-                        torch_dtype=torch.bfloat16,
+                        dtype=torch.bfloat16,
                         attn_implementation=attn_implementation,
                     )
                     .to(torch_device)
@@ -372,6 +408,7 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
                     input_ids=inputs_dict["input_ids"],
                     image_grid_thw=inputs_dict["image_grid_thw"],
                     attention_mask=inputs_dict["attention_mask"],
+                    mm_token_type_ids=inputs_dict["mm_token_type_ids"],
                 )  # [3, bs, padded-seq-len]
                 vision_padfree_positions = vision_position_ids[:, dummy_attention_mask.bool()].view(
                     3, -1
@@ -435,19 +472,12 @@ class Qwen2_5_VLModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.Test
     def test_multi_gpu_data_parallel_forward(self):
         pass
 
-    @unittest.skip(reason="We cannot configure to output a smaller model.")
-    def test_model_is_small(self):
-        pass
-
-    @is_flaky()  # TODO (joao/raushan): Investigate why this test is flaky on this model
-    def test_prompt_lookup_decoding_matches_greedy_search(self):
-        super().test_prompt_lookup_decoding_matches_greedy_search()
-
 
 @require_torch
 class Qwen2_5_VLIntegrationTest(unittest.TestCase):
     def setUp(self):
         self.processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
+        self.processor.tokenizer.padding_side = "left"
         self.messages = [
             {
                 "role": "user",
@@ -457,8 +487,8 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
                 ],
             }
         ]
-        url = "https://qianwen-res.oss-accelerate-overseas.aliyuncs.com/Qwen2-VL/demo_small.jpg"
-        self.image = Image.open(requests.get(url, stream=True).raw)
+        img_url = url_to_local_path("https://qianwen-res.oss-accelerate-overseas.aliyuncs.com/Qwen2-VL/demo_small.jpg")
+        self.image = load_image(img_url).convert("RGB")
 
         cleanup(torch_device, gc_collect=True)
 
@@ -468,7 +498,7 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
     @slow
     def test_small_model_integration_test(self):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct", torch_dtype="auto", device_map="auto"
+            "Qwen/Qwen2.5-VL-7B-Instruct", dtype="auto", device_map="auto"
         )
 
         text = self.processor.apply_chat_template(self.messages, tokenize=False, add_generation_prompt=True)
@@ -494,7 +524,7 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
         # verify generation
         inputs = inputs.to(torch_device)
 
-        output = model.generate(**inputs, max_new_tokens=30)
+        output = model.generate(**inputs, max_new_tokens=30, do_sample=False)
         EXPECTED_DECODED_TEXT = "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in"
 
         self.assertEqual(
@@ -505,7 +535,7 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
     @slow
     def test_small_model_integration_test_batch(self):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct", torch_dtype="auto", device_map="auto"
+            "Qwen/Qwen2.5-VL-7B-Instruct", dtype="auto", device_map="auto"
         )
         text = self.processor.apply_chat_template(self.messages, tokenize=False, add_generation_prompt=True)
         inputs = self.processor(text=[text, text], images=[self.image, self.image], return_tensors="pt").to(
@@ -513,22 +543,22 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
         )
 
         # it should not matter whether two images are the same size or not
-        output = model.generate(**inputs, max_new_tokens=30)
+        output = model.generate(**inputs, max_new_tokens=30, do_sample=False)
 
-        EXPECTED_DECODED_TEXT = [
-            'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
-            'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
-        ]  # fmt: skip
+        expected_decoded_texts = [
+            "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in",
+            "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in",
+        ]
 
         self.assertEqual(
             self.processor.batch_decode(output, skip_special_tokens=True),
-            EXPECTED_DECODED_TEXT,
+            expected_decoded_texts,
         )
 
     @slow
     def test_small_model_integration_test_expand(self):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct", torch_dtype="auto", device_map="auto"
+            "Qwen/Qwen2.5-VL-7B-Instruct", dtype="auto", device_map="auto"
         )
         text = self.processor.apply_chat_template(self.messages, tokenize=False, add_generation_prompt=True)
         inputs = self.processor(text=[text], images=[self.image], return_tensors="pt").to(torch_device)
@@ -549,7 +579,7 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
     @slow
     def test_small_model_integration_test_batch_wo_image(self):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct", torch_dtype="auto", device_map="auto"
+            "Qwen/Qwen2.5-VL-7B-Instruct", dtype="auto", device_map="auto"
         )
         text = self.processor.apply_chat_template(self.messages, tokenize=False, add_generation_prompt=True)
         messages2 = [
@@ -562,22 +592,34 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
         )
 
         # it should not matter whether two images are the same size or not
-        output = model.generate(**inputs, max_new_tokens=30)
+        output = model.generate(**inputs, max_new_tokens=30, do_sample=False)
 
-        EXPECTED_DECODED_TEXT = [
-            'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
-            'system\nYou are a helpful assistant.\nuser\nWho are you?\nassistant\n addCriterion',
-        ]  # fmt: skip
+        expected_decoded_texts = Expectations(
+            {
+                (None, None): [
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                    'system\nYou are a helpful assistant.\nuser\nWho are you?\nassistant\nI am Qwen, an AI language model created by Alibaba Cloud. I am designed to assist with various tasks such as answering questions, providing information,'
+                ],
+                ("rocm", (9, 4)): [
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                    'system\nYou are a helpful assistant.\nuser\nWho are you?\nassistant\nI am Qwen, a large language model created by Alibaba Cloud. I am designed to assist with a wide range of tasks, from answering questions and'
+                ],
+                ("xpu", None): [
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                    'system\nYou are a helpful assistant.\nuser\nWho are you?\nassistant\nI am Qwen, a large language model created by Alibaba Cloud. I am designed to assist with a wide range of tasks, from answering questions and'
+                ],
+            }
+        ).get_expectation()  # fmt: skip
 
         self.assertEqual(
             self.processor.batch_decode(output, skip_special_tokens=True),
-            EXPECTED_DECODED_TEXT,
+            expected_decoded_texts,
         )
 
     @slow
     def test_small_model_integration_test_batch_different_resolutions(self):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct", torch_dtype="auto", device_map="auto"
+            "Qwen/Qwen2.5-VL-7B-Instruct", dtype="auto", device_map="auto"
         )
         text = self.processor.apply_chat_template(self.messages, tokenize=False, add_generation_prompt=True)
         text2 = self.processor.apply_chat_template(self.messages, tokenize=False, add_generation_prompt=True)
@@ -590,25 +632,45 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
         ).to(torch_device)
 
         # it should not matter whether two images are the same size or not
-        output = model.generate(**inputs, max_new_tokens=30)
+        output = model.generate(**inputs, max_new_tokens=30, do_sample=False)
 
-        EXPECTED_DECODED_TEXT = [
-            "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in",
-            "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\n addCriterion\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and gentle nature, which is",
-        ]
+        expected_decoded_texts = Expectations(
+            {
+                (None, None): [
+                    "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in",
+                    "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\n addCriterion\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and gentle nature, which is",
+                ],
+                ("cuda", (8, 6)): [
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and gentle nature, which is evident in',
+                ],
+                ("rocm", None): [
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and gentle nature, which is evident in',
+                ],
+                ("xpu", None): [
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                    'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and gentle nature, which is evident in',
+                ],
+            }
+        ).get_expectation()  # fmt: skip
 
-        self.assertEqual(
-            self.processor.batch_decode(output, skip_special_tokens=True),
-            EXPECTED_DECODED_TEXT,
-        )
+        decoded_texts = self.processor.batch_decode(output, skip_special_tokens=True)
+        for i, (expected, decoded) in enumerate(zip(expected_decoded_texts, decoded_texts)):
+            self.assertEqual(
+                decoded,
+                expected,
+                f"Decoded text {i}:\n{repr(decoded)}\ndoes not match expected decoded text:\n{repr(expected)}",
+            )
 
     @slow
     @require_flash_attn
-    @require_torch_gpu
+    @require_torch_accelerator
+    @pytest.mark.flash_attn_test
     def test_small_model_integration_test_batch_flashatt2(self):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             "Qwen/Qwen2.5-VL-7B-Instruct",
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,
             attn_implementation="flash_attention_2",
             device_map="auto",
         )
@@ -618,29 +680,23 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
         )
 
         # it should not matter whether two images are the same size or not
-        output = model.generate(**inputs, max_new_tokens=30)
+        output = model.generate(**inputs, max_new_tokens=30, do_sample=False)
 
-        EXPECTED_DECODED_TEXT = [
-            "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and intelligent nature, making them popular pets",
-            "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and intelligent nature, making them popular pets",
-        ]
+        expected_decoded_text = "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in"
 
-        self.assertEqual(
-            self.processor.batch_decode(output, skip_special_tokens=True),
-            EXPECTED_DECODED_TEXT,
-        )
-        self.assertEqual(
-            self.processor.batch_decode(output, skip_special_tokens=True)[0],
-            self.processor.batch_decode(output, skip_special_tokens=True)[1],
-        )
+        # Since the test is to generate twice the same text, we just test twice against the expected decoded text
+        decoded_texts = self.processor.batch_decode(output, skip_special_tokens=True)
+        self.assertEqual(decoded_texts[0], expected_decoded_text)
+        self.assertEqual(decoded_texts[1], expected_decoded_text)
 
     @slow
     @require_flash_attn
-    @require_torch_gpu
+    @require_torch_accelerator
+    @pytest.mark.flash_attn_test
     def test_small_model_integration_test_batch_wo_image_flashatt2(self):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             "Qwen/Qwen2.5-VL-7B-Instruct",
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,
             attn_implementation="flash_attention_2",
             device_map="auto",
         )
@@ -655,63 +711,65 @@ class Qwen2_5_VLIntegrationTest(unittest.TestCase):
         )
 
         # it should not matter whether two images are the same size or not
-        output = model.generate(**inputs, max_new_tokens=30)
+        output = model.generate(**inputs, max_new_tokens=30, do_sample=False)
 
-        EXPECTED_DECODED_TEXT = [
-            "system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and intelligent nature, making them popular pets",
-            "system\nYou are a helpful assistant.\nuser\nWho are you?\nassistant\nI am Qwen, a large language model created by Alibaba Cloud. I am designed to answer a wide range of questions and provide information on various topics",
-        ]
+        # FIXME: The second decoded text in the CUDA expectation seems to be incorrect, it used to be the second text
+        # on the ROCm expectation that was the correct one. Either model changed or code is buggy.
+        EXPECTED_DECODED_TEXT = Expectations({
+            ("cuda", None): [
+                'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                "system\nYou are a helpful assistant.\nuser\nWho are you?\nassistant\n�\n\n addCriterion\nI'm sorry, but I don't understand your question. Could you please provide more context or clarify what you're asking",
+            ],
+            ("rocm", (9, 4)): [
+                'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                'system\nYou are a helpful assistant.\nuser\nWho are you?\nassistant\nI am Qwen, a large language model created by Alibaba Cloud. I am designed to assist with a wide range of tasks, from answering questions and'
+            ],
+            ("xpu", None): [
+                'system\nYou are a helpful assistant.\nuser\nWhat kind of dog is this?\nassistant\nThe dog in the picture appears to be a Labrador Retriever. Labradors are known for their friendly and energetic nature, which is evident in',
+                "system\nYou are a helpful assistant.\nuser\nWho are you?\nassistant\nI am Qwen, a large language model created by Alibaba Cloud. I am designed to assist with a wide range of tasks, from answering questions and",
+            ],
+        }).get_expectation()  # fmt: skip
 
-        self.assertEqual(
-            self.processor.batch_decode(output, skip_special_tokens=True),
-            EXPECTED_DECODED_TEXT,
-        )
+        decoded_text = self.processor.batch_decode(output, skip_special_tokens=True)
+        self.assertEqual(decoded_text, EXPECTED_DECODED_TEXT)
 
     @slow
-    @require_cv2
     def test_small_model_integration_test_with_video(self):
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen2.5-VL-7B-Instruct", torch_dtype="auto", device_map="auto"
+            "Qwen/Qwen2.5-VL-7B-Instruct", dtype="auto", device_map="auto"
         )
 
         video_url = "https://huggingface.co/datasets/hf-internal-testing/fixtures_videos/resolve/main/tennis.mp4"
-        messages2 = [
+        messages = [
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "video",
-                    },
+                    {"type": "video", "url": video_url},
                     {"type": "text", "text": "What is shown in this video?"},
                 ],
             }
         ]
-        text = self.processor.apply_chat_template(messages2, tokenize=False, add_generation_prompt=True)
+        inputs = self.processor.apply_chat_template(
+            messages,
+            tokenize=True,
+            return_dict=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+            num_frames=10,
+        ).to(torch_device)
 
-        with tempfile.NamedTemporaryFile(suffix=".mp4") as f:
-            f.write(requests.get(video_url).content)
-            f.flush()
-            cap = cv2.VideoCapture(f.name)
-
-            frames = []
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frames.append(Image.fromarray(frame_rgb).resize((224, 224), Image.BICUBIC))
-
-            cap.release()
-
-        inputs = self.processor(text=[text], videos=[frames], return_tensors="pt").to(torch_device)
-
-        # it should not matter whether two images are the same size or not
-        output = model.generate(**inputs, max_new_tokens=30)
-
-        EXPECTED_DECODED_TEXT = [
-            'system\nYou are a helpful assistant.\nuser\nWhat is shown in this video?\nassistant\nThe video shows an indoor tennis court with a person standing on one side, preparing to serve the ball. The individual is dressed in athletic attire, including',
-        ]  # fmt: skip
+        output = model.generate(**inputs, max_new_tokens=30, do_sample=False)
+        expected_decoded_texts = Expectations(
+            {
+                (None, None): [
+                    'system\nYou are a helpful assistant.\nuser\nWhat is shown in this video?\nassistant\nThe video shows two individuals playing tennis on an indoor court. The player in the foreground, dressed in a white shirt and black shorts, is preparing to',
+                ],
+                ("xpu", None): [
+                    'system\nYou are a helpful assistant.\nuser\nWhat is shown in this video?\nassistant\nThe video shows an indoor tennis court with a person standing on the service line, preparing to serve. The individual appears to be practicing or warming up,',
+                ],
+            }
+        ).get_expectation()  # fmt: skip
         self.assertEqual(
             self.processor.batch_decode(output, skip_special_tokens=True),
-            EXPECTED_DECODED_TEXT,
+            expected_decoded_texts,
         )

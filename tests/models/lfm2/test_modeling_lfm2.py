@@ -15,28 +15,26 @@
 
 import unittest
 
-import pytest
-
 from transformers import is_torch_available
 from transformers.testing_utils import (
-    require_read_token,
     require_torch,
     require_torch_accelerator,
     slow,
+    torch_device,
 )
 
 from ...causal_lm_tester import CausalLMModelTest, CausalLMModelTester
 
 
 if is_torch_available():
-    from transformers import Lfm2Config, Lfm2ForCausalLM, Lfm2Model
+    import torch
+
+    from transformers import Lfm2ForCausalLM, Lfm2Model
 
 
 class Lfm2ModelTester(CausalLMModelTester):
     if is_torch_available():
-        config_class = Lfm2Config
         base_model_class = Lfm2Model
-        causal_lm_class = Lfm2ForCausalLM
 
     def __init__(
         self,
@@ -49,54 +47,66 @@ class Lfm2ModelTester(CausalLMModelTester):
 
 @require_torch
 class Lfm2ModelTest(CausalLMModelTest, unittest.TestCase):
-    all_model_classes = (Lfm2Model, Lfm2ForCausalLM) if is_torch_available() else ()
-    pipeline_model_mapping = (
-        {
-            "feature-extraction": Lfm2Model,
-            "text-generation": Lfm2ForCausalLM,
-        }
-        if is_torch_available()
-        else {}
-    )
-    test_headmasking = False
-    test_pruning = False
-    fx_compatible = False
     model_tester_class = Lfm2ModelTester
     # used in `test_torch_compile_for_training`
     _torch_compile_train_cls = Lfm2ForCausalLM if is_torch_available() else None
 
-    @unittest.skip(
-        "Lfm2 alternates between attention and conv layers, so attention are only returned for attention layers"
-    )
+    def _get_conv_state_shape(self, batch_size: int, config):
+        return (batch_size, config.hidden_size, config.conv_L_cache)
+
+    def test_assisted_generation_rejected_as_stateful(self):
+        """LFM2 is a conv/attention hybrid (stateful), so assisted / prompt-lookup decoding must be rejected with
+        a clear error instead of silently producing wrong text (it cannot roll back its conv state)."""
+        config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
+        model = Lfm2ForCausalLM(config).to(torch_device).eval()
+        input_ids = inputs_dict["input_ids"][:1]  # batch size 1, so prompt lookup would otherwise run
+        with self.assertRaisesRegex(ValueError, "stateful"):
+            model.generate(input_ids, max_new_tokens=3, do_sample=False, prompt_lookup_num_tokens=2)
+
     def test_attention_outputs(self):
-        pass
+        """Lfm2Moe alternates between attention and short-conv layers."""
+        config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
+        config.return_dict = True
+        # force eager attention to support output attentions
+        config._attn_implementation = "eager"
+        seq_len = getattr(self.model_tester, "seq_length", None)
 
-    @unittest.skip("Lfm2 has a special cache format as it alternates between attention and conv layers")
-    def test_past_key_values_format(self):
-        pass
+        for model_class in self.all_model_classes:
+            inputs_dict["output_attentions"] = True
+            inputs_dict["output_hidden_states"] = False
+            config.return_dict = True
+            model = model_class._from_config(config, attn_implementation="eager").to(torch_device).eval()
+            config = model.config
+            with torch.no_grad():
+                outputs = model(**self._prepare_for_class(inputs_dict, model_class))
+            attentions = outputs.attentions
+            self.assertEqual(len(attentions), sum(layer == "full_attention" for layer in config.layer_types))
 
-    @unittest.skip("Lfm2 has a special cache format which is not compatible with contrastive search")
-    def test_contrastive_generate(self):
-        pass
+            # check that output_attentions also work using config
+            del inputs_dict["output_attentions"]
+            config.output_attentions = True
+            model = model_class(config).to(torch_device).eval()
+            with torch.no_grad():
+                outputs = model(**self._prepare_for_class(inputs_dict, model_class))
+            attentions = outputs.attentions
+            self.assertEqual(len(attentions), sum(layer == "full_attention" for layer in config.layer_types))
+            self.assertListEqual(list(attentions[0].shape[-3:]), [config.num_attention_heads, seq_len, seq_len])
+            out_len = len(outputs)
 
-    @unittest.skip("Lfm2 has a special cache format which is not compatible with contrastive search")
-    def test_contrastive_generate_dict_outputs_use_cache(self):
-        pass
+            # Check attention is always last and order is fine
+            inputs_dict["output_attentions"] = True
+            inputs_dict["output_hidden_states"] = True
+            model = model_class(config).to(torch_device).eval()
+            with torch.no_grad():
+                outputs = model(**self._prepare_for_class(inputs_dict, model_class))
+                self_attentions = outputs.attentions
 
-    @unittest.skip("Lfm2 has a special cache format which is not compatible with contrastive search")
-    def test_contrastive_generate_low_memory(self):
-        pass
-
-    @unittest.skip(
-        "Lfm2 has a special cache format which is not compatible with compile as it has static address for conv cache"
-    )
-    @pytest.mark.torch_compile_test
-    def test_sdpa_can_compile_dynamic(self):
-        pass
+            self.assertEqual(out_len + 1, len(outputs))
+            self.assertEqual(len(self_attentions), sum(layer == "full_attention" for layer in config.layer_types))
+            self.assertListEqual(list(self_attentions[0].shape[-3:]), [config.num_attention_heads, seq_len, seq_len])
 
 
 @require_torch_accelerator
-@require_read_token
 @slow
 class Lfm2IntegrationTest(unittest.TestCase):
     pass

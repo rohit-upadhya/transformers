@@ -13,18 +13,14 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2023-04-05 and added to Hugging Face Transformers on 2023-04-19.*
+*This model was published in HF papers on 2023-04-05 and contributed to Hugging Face Transformers on 2023-04-19.*
 
 # SAM
 
-<div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-<img alt="TensorFlow" src="https://img.shields.io/badge/TensorFlow-FF6F00?style=flat&logo=tensorflow&logoColor=white">
-</div>
 
 ## Overview
 
-SAM (Segment Anything Model) was proposed in [Segment Anything](https://huggingface.co/papers/2304.02643v1.pdf) by Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alex Berg, Wan-Yen Lo, Piotr Dollar, Ross Girshick.
+SAM (Segment Anything Model) was proposed in [Segment Anything](https://huggingface.co/papers/2304.02643) by Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alex Berg, Wan-Yen Lo, Piotr Dollar, Ross Girshick.
 
 The model can be used to predict segmentation masks of any object of interest given an input image.
 
@@ -42,27 +38,27 @@ Tips:
 - Fine-tuning the model is not supported yet
 - According to the paper, textual input should be also supported. However, at this time of writing this seems not to be supported according to [the official repository](https://github.com/facebookresearch/segment-anything/issues/4#issuecomment-1497626844).
 
-
 This model was contributed by [ybelkada](https://huggingface.co/ybelkada) and [ArthurZ](https://huggingface.co/ArthurZ).
 The original code can be found [here](https://github.com/facebookresearch/segment-anything).
 
 Below is an example on how to run mask generation given an image and a 2D point:
 
 ```python
+import requests
 import torch
 from PIL import Image
-import requests
+
 from transformers import SamModel, SamProcessor
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model = SamModel.from_pretrained("facebook/sam-vit-huge").to(device)
+
+model = SamModel.from_pretrained("facebook/sam-vit-huge", device_map="auto")
 processor = SamProcessor.from_pretrained("facebook/sam-vit-huge")
 
 img_url = "https://huggingface.co/ybelkada/segment-anything/resolve/main/assets/car.png"
 raw_image = Image.open(requests.get(img_url, stream=True).raw).convert("RGB")
 input_points = [[[450, 600]]]  # 2D location of a window in the image
 
-inputs = processor(raw_image, input_points=input_points, return_tensors="pt").to(device)
+inputs = processor(raw_image, input_points=input_points, return_tensors="pt").to(model.device)
 with torch.no_grad():
     outputs = model(**inputs)
 
@@ -75,13 +71,14 @@ scores = outputs.iou_scores
 You can also process your own masks alongside the input images in the processor to be passed to the model.
 
 ```python
+import requests
 import torch
 from PIL import Image
-import requests
+
 from transformers import SamModel, SamProcessor
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model = SamModel.from_pretrained("facebook/sam-vit-huge").to(device)
+
+model = SamModel.from_pretrained("facebook/sam-vit-huge", device_map="auto")
 processor = SamProcessor.from_pretrained("facebook/sam-vit-huge")
 
 img_url = "https://huggingface.co/ybelkada/segment-anything/resolve/main/assets/car.png"
@@ -90,7 +87,7 @@ mask_url = "https://huggingface.co/ybelkada/segment-anything/resolve/main/assets
 segmentation_map = Image.open(requests.get(mask_url, stream=True).raw).convert("1")
 input_points = [[[450, 600]]]  # 2D location of a window in the image
 
-inputs = processor(raw_image, input_points=input_points, segmentation_maps=segmentation_map, return_tensors="pt").to(device)
+inputs = processor(raw_image, input_points=input_points, segmentation_maps=segmentation_map, return_tensors="pt").to(model.device)
 with torch.no_grad():
     outputs = model(**inputs)
 
@@ -99,6 +96,7 @@ masks = processor.image_processor.post_process_masks(
 )
 scores = outputs.iou_scores
 ```
+
 ## Resources
 
 A list of official Hugging Face and community (indicated by 🌎) resources to help you get started with SAM.
@@ -139,41 +137,27 @@ alt="drawing" width="900"/>
 
 [[autodoc]] SamPromptEncoderConfig
 
-
 ## SamProcessor
 
 [[autodoc]] SamProcessor
-
+    - __call__
 
 ## SamImageProcessor
 
 [[autodoc]] SamImageProcessor
+    - preprocess
 
+## SamImageProcessorPil
 
-## SamImageProcessorFast
-
-[[autodoc]] SamImageProcessorFast
-
+[[autodoc]] SamImageProcessorPil
+    - preprocess
 
 ## SamVisionModel
 
 [[autodoc]] SamVisionModel
     - forward
 
-
 ## SamModel
 
 [[autodoc]] SamModel
     - forward
-
-
-## TFSamVisionModel
-
-[[autodoc]] TFSamVisionModel
-    - call
-
-
-## TFSamModel
-
-[[autodoc]] TFSamModel
-    - call

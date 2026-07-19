@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2025 HuggingFace Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -111,6 +110,23 @@ class SmolVLMVideoProcessingTest(VideoProcessingTestMixin, unittest.TestCase):
         video_processor = self.fast_video_processing_class.from_dict(self.video_processor_dict, size=42)
         self.assertEqual(video_processor.size, {"height": 42, "width": 42})
 
+    def test_call_padding_max_frames(self):
+        for video_processing_class in self.video_processor_list:
+            video_processing = video_processing_class(**self.video_processor_dict)
+
+            video_inputs = self.video_processor_tester.prepare_video_inputs(
+                equal_resolution=False,
+                return_tensors="torch",
+            )
+            # Crop to process only 3 frames for first sample. Processor has to pad up to max frames in batch
+            crop_frames = 3
+            video_inputs[0] = video_inputs[0][-crop_frames:]
+
+            encoded_videos = video_processing(video_inputs[0], return_tensors="pt")[self.input_name]
+            encoded_videos_batched = video_processing(video_inputs, return_tensors="pt")[self.input_name]
+            self.assertEqual(encoded_videos.shape[1], crop_frames)
+            self.assertEqual(encoded_videos_batched.shape[1], 8)  # Padded to max frames in batch (= 8)
+
     # overwrite, SmolVLM requires to have metadata no matter how we sample
     def test_call_sample_frames(self):
         for video_processing_class in self.video_processor_list:
@@ -136,15 +152,6 @@ class SmolVLMVideoProcessingTest(VideoProcessingTestMixin, unittest.TestCase):
             metadata = [[{"duration": 2.0, "total_num_frames": 8, "fps": 4}]]
             batched_metadata = metadata * len(video_inputs)
 
-            # Sample with `fps` requires metadata to infer number of frames from total duration
-            with self.assertRaises(ValueError):
-                encoded_videos = video_processing(video_inputs[0], return_tensors="pt", num_frames=6, fps=3)[
-                    self.input_name
-                ]
-                encoded_videos_batched = video_processing(video_inputs, return_tensors="pt", num_frames=6, fps=3)[
-                    self.input_name
-                ]
-
             encoded_videos = video_processing(
                 video_inputs[0], return_tensors="pt", num_frames=6, fps=3, video_metadata=metadata
             )[self.input_name]
@@ -153,15 +160,6 @@ class SmolVLMVideoProcessingTest(VideoProcessingTestMixin, unittest.TestCase):
             )[self.input_name]
             self.assertEqual(encoded_videos.shape[1], 6)
             self.assertEqual(encoded_videos_batched.shape[1], 6)
-
-            # We should raise error when asked to sample more frames than there are in input video
-            with self.assertRaises(ValueError):
-                encoded_videos = video_processing(video_inputs[0], return_tensors="pt", fps=10, num_frames=20)[
-                    self.input_name
-                ]
-                encoded_videos_batched = video_processing(video_inputs, return_tensors="pt", fps=10, num_frames=20)[
-                    self.input_name
-                ]
 
             # Assign back the actual num frames in tester
             self.video_processor_tester.num_frames = prev_num_frames

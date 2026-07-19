@@ -13,13 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2021-12-18 and added to Hugging Face Transformers on 2022-11-08.*
+*This model was published in HF papers on 2021-12-18 and contributed to Hugging Face Transformers on 2022-11-08.*
 
 # CLIPSeg
 
-<div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-</div>
 
 ## Overview
 
@@ -47,7 +44,7 @@ can be formulated. Finally, we find our system to adapt well
 to generalized queries involving affordances or properties*
 
 <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/model_doc/clipseg_architecture.png"
-alt="drawing" width="600"/> 
+alt="drawing" width="600"/>
 
 <small> CLIPSeg overview. Taken from the <a href="https://huggingface.co/papers/2112.10003">original paper.</a> </small>
 
@@ -72,7 +69,6 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 ## CLIPSegConfig
 
 [[autodoc]] CLIPSegConfig
-    - from_text_vision_configs
 
 ## CLIPSegTextConfig
 
@@ -85,6 +81,7 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 ## CLIPSegProcessor
 
 [[autodoc]] CLIPSegProcessor
+    - __call__
 
 ## CLIPSegModel
 

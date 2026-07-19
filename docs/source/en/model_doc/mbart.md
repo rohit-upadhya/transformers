@@ -13,13 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2020-01-22 and added to Hugging Face Transformers on 2020-11-16.*
+*This model was published in HF papers on 2020-01-22 and contributed to Hugging Face Transformers on 2020-11-16.*
 
 <div style="float: right;">
   <div class="flex flex-wrap space-x-1">
-    <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-    <img alt="TensorFlow" src="https://img.shields.io/badge/TensorFlow-FF6F00?style=flat&logo=tensorflow&logoColor=white">
-    <img alt="Flax" src="https://img.shields.io/badge/Flax-29a79b.svg?style=flat">
     <img alt="FlashAttention" src="https://img.shields.io/badge/%E2%9A%A1%EF%B8%8E%20FlashAttention-eae0c8?style=flat">
     <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
   </div>
@@ -36,25 +33,21 @@ You can find all the original mBART checkpoints under the [AI at Meta](https://h
 > [!TIP]
 > Click on the mBART models in the right sidebar for more examples of applying mBART to different language tasks.
 
-> [!NOTE]
-> The `head_mask` argument is ignored when using all attention implementation other than "eager". If you have a `head_mask` and want it to have effect, load the model with `XXXModel.from_pretrained(model_id, attn_implementation="eager")`
-
 The example below demonstrates how to translate text with [`Pipeline`] or the [`AutoModel`] class.
 
 <hfoptions id="usage">
 <hfoption id="Pipeline">
 
-```py
-import torch
+```python
 from transformers import pipeline
+
 
 pipeline = pipeline(
     task="translation",
     model="facebook/mbart-large-50-many-to-many-mmt",
-    device=0,
-    torch_dtype=torch.float16,
     src_lang="en_XX",
     tgt_lang="fr_XX",
+    device=0,
 )
 print(pipeline("UN Chief Says There Is No Military Solution in Syria"))
 ```
@@ -62,17 +55,17 @@ print(pipeline("UN Chief Says There Is No Military Solution in Syria"))
 </hfoption>
 <hfoption id="AutoModel">
 
-```py
-import torch
+```python
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
 
 article_en = "UN Chief Says There Is No Military Solution in Syria"
 
-model = AutoModelForSeq2SeqLM.from_pretrained("facebook/mbart-large-50-many-to-many-mmt", torch_dtype=torch.bfloat16, attn_implementation="sdpa", device_map="auto")
+model = AutoModelForSeq2SeqLM.from_pretrained("facebook/mbart-large-50-many-to-many-mmt", attn_implementation="sdpa", device_map="auto")
 tokenizer = AutoTokenizer.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
 
 tokenizer.src_lang = "en_XX"
-encoded_hi = tokenizer(article_en, return_tensors="pt").to("cuda")
+encoded_hi = tokenizer(article_en, return_tensors="pt").to(model.device)
 generated_tokens = model.generate(**encoded_hi, forced_bos_token_id=tokenizer.lang_code_to_id["fr_XX"], cache_implementation="static")
 print(tokenizer.batch_decode(generated_tokens, skip_special_tokens=True))
 ```
@@ -90,11 +83,11 @@ print(tokenizer.batch_decode(generated_tokens, skip_special_tokens=True))
     import torch
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-    model = AutoModelForSeq2SeqLM.from_pretrained("facebook/mbart-large-en-ro", torch_dtype=torch.bfloat16, attn_implementation="sdpa", device_map="auto")
+    model = AutoModelForSeq2SeqLM.from_pretrained("facebook/mbart-large-en-ro", attn_implementation="sdpa", device_map="auto")
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-en-ro", src_lang="en_XX")
 
     article = "UN Chief Says There Is No Military Solution in Syria"
-    inputs = tokenizer(article, return_tensors="pt")
+    inputs = tokenizer(article, return_tensors="pt").to(model.device)
 
     translated_tokens = model.generate(**inputs, decoder_start_token_id=tokenizer.lang_code_to_id["ro_RO"])
     tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
@@ -107,13 +100,13 @@ print(tokenizer.batch_decode(generated_tokens, skip_special_tokens=True))
     import torch
     from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-    model = AutoModelForSeq2SeqLM.from_pretrained("facebook/mbart-large-50-many-to-many-mmt", torch_dtype=torch.bfloat16, attn_implementation="sdpa", device_map="auto")
+    model = AutoModelForSeq2SeqLM.from_pretrained("facebook/mbart-large-50-many-to-many-mmt", attn_implementation="sdpa", device_map="auto")
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-50-many-to-many-mmt")
 
     article_ar = "الأمين العام للأمم المتحدة يقول إنه لا يوجد حل عسكري في سوريا."
     tokenizer.src_lang = "ar_AR"
 
-    encoded_ar = tokenizer(article_ar, return_tensors="pt")
+    encoded_ar = tokenizer(article_ar, return_tensors="pt").to(model.device)
     generated_tokens = model.generate(**encoded_ar, forced_bos_token_id=tokenizer.lang_code_to_id["en_XX"])
     tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
     ```
@@ -125,7 +118,6 @@ print(tokenizer.batch_decode(generated_tokens, skip_special_tokens=True))
 ## MBartTokenizer
 
 [[autodoc]] MBartTokenizer
-    - build_inputs_with_special_tokens
 
 ## MBartTokenizerFast
 
@@ -138,9 +130,6 @@ print(tokenizer.batch_decode(generated_tokens, skip_special_tokens=True))
 ## MBart50TokenizerFast
 
 [[autodoc]] MBart50TokenizerFast
-
-<frameworkcontent>
-<pt>
 
 ## MBartModel
 
@@ -162,50 +151,3 @@ print(tokenizer.batch_decode(generated_tokens, skip_special_tokens=True))
 
 [[autodoc]] MBartForCausalLM
     - forward
-
-</pt>
-<tf>
-
-## TFMBartModel
-
-[[autodoc]] TFMBartModel
-    - call
-
-## TFMBartForConditionalGeneration
-
-[[autodoc]] TFMBartForConditionalGeneration
-    - call
-
-</tf>
-<jax>
-
-## FlaxMBartModel
-
-[[autodoc]] FlaxMBartModel
-    - __call__
-    - encode
-    - decode
-
-## FlaxMBartForConditionalGeneration
-
-[[autodoc]] FlaxMBartForConditionalGeneration
-    - __call__
-    - encode
-    - decode
-
-## FlaxMBartForSequenceClassification
-
-[[autodoc]] FlaxMBartForSequenceClassification
-    - __call__
-    - encode
-    - decode
-
-## FlaxMBartForQuestionAnswering
-
-[[autodoc]] FlaxMBartForQuestionAnswering
-    - __call__
-    - encode
-    - decode
-
-</jax>
-</frameworkcontent>

@@ -18,7 +18,7 @@ import unittest
 
 import pytest
 
-from transformers import Phi3Config, StaticCache, is_torch_available
+from transformers import StaticCache, is_torch_available
 from transformers.models.auto.configuration_auto import AutoConfig
 from transformers.testing_utils import (
     Expectations,
@@ -36,11 +36,8 @@ if is_torch_available():
     from transformers import (
         AutoTokenizer,
         Phi3ForCausalLM,
-        Phi3ForSequenceClassification,
-        Phi3ForTokenClassification,
         Phi3Model,
     )
-    from transformers.models.phi3.modeling_phi3 import Phi3RotaryEmbedding
 
     end_of_text_token = 32000
 
@@ -87,36 +84,20 @@ if is_torch_available():
 
 
 class Phi3ModelTester(CausalLMModelTester):
-    config_class = Phi3Config
     if is_torch_available():
         base_model_class = Phi3Model
-        causal_lm_class = Phi3ForCausalLM
-        sequence_class = Phi3ForSequenceClassification
-        token_class = Phi3ForTokenClassification
+
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+        # NOTE(3outeille): must be 0.0 for TP backward tests. In train mode, non-zero dropout causes
+        # different RNG states between the non-TP and TP model forward passes (they run sequentially),
+        # leading to different dropout masks and mismatched losses.
+        self.attention_dropout = 0.0
 
 
 @require_torch
 class Phi3ModelTest(CausalLMModelTest, unittest.TestCase):
-    all_model_classes = (
-        (Phi3Model, Phi3ForCausalLM, Phi3ForSequenceClassification, Phi3ForTokenClassification)
-        if is_torch_available()
-        else ()
-    )
-    pipeline_model_mapping = (
-        {
-            "feature-extraction": Phi3Model,
-            "text-classification": Phi3ForSequenceClassification,
-            "token-classification": Phi3ForTokenClassification,
-            "text-generation": Phi3ForCausalLM,
-        }
-        if is_torch_available()
-        else {}
-    )
-
-    test_headmasking = False
-    test_pruning = False
     model_tester_class = Phi3ModelTester
-    rotary_embedding_layer = Phi3RotaryEmbedding
 
 
 @slow
@@ -129,7 +110,9 @@ class Phi3IntegrationTest(unittest.TestCase):
             )
         }
 
-        model = Phi3ForCausalLM.from_pretrained("microsoft/phi-3-mini-4k-instruct").to(torch_device)
+        model = Phi3ForCausalLM.from_pretrained("microsoft/phi-3-mini-4k-instruct", dtype=torch.float32).to(
+            torch_device
+        )
         model.eval()
 
         output = model(**input_ids).logits
@@ -156,11 +139,11 @@ class Phi3IntegrationTest(unittest.TestCase):
         ]
         inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt")
 
-        outputs = model.generate(inputs, max_new_tokens=32)
+        outputs = model.generate(**inputs, max_new_tokens=32)
         output_text = tokenizer.batch_decode(outputs)
 
         EXPECTED_OUTPUT = [
-            "<|system|> You are a helpful digital assistant. Please provide safe, ethical and accurate information to the user.<|end|><|user|> Can you provide ways to eat combinations of bananas and dragonfruits?<|end|><|assistant|> Certainly! Bananas and dragonfruits can be combined in various delicious ways. Here are some ideas for incorporating these fruits into your"
+            "<|system|> You are a helpful digital assistant. Please provide safe, ethical and accurate information to the user.<|end|><|user|> Can you provide ways to eat combinations of bananas and dragonfruits?<|end|><|assistant|> Certainly! Bananas and dragonfruits can be combined in various delicious and healthy ways. Here are some creative ideas to enjoy these"
         ]
 
         self.assertListEqual(output_text, EXPECTED_OUTPUT)
@@ -178,7 +161,7 @@ class Phi3IntegrationTest(unittest.TestCase):
         ]
         inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt")
 
-        response_tokens = Phi3MiniWithStaticCache.generate(model, inputs, 64)
+        response_tokens = Phi3MiniWithStaticCache.generate(model, inputs["input_ids"], 64)
 
         output_text = tokenizer.batch_decode(torch.tensor([response_tokens], dtype=torch.long, device=torch_device))
 
@@ -195,7 +178,9 @@ class Phi3IntegrationTest(unittest.TestCase):
             )
         }
 
-        model = Phi3ForCausalLM.from_pretrained("microsoft/phi-3-mini-128k-instruct").to(torch_device)
+        model = Phi3ForCausalLM.from_pretrained("microsoft/phi-3-mini-128k-instruct", dtype=torch.float32).to(
+            torch_device
+        )
         model.eval()
 
         output = model(**input_ids).logits
@@ -222,7 +207,7 @@ class Phi3IntegrationTest(unittest.TestCase):
         ]
         inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt")
 
-        outputs = model.generate(inputs, max_new_tokens=32)
+        outputs = model.generate(**inputs, max_new_tokens=32)
         output_text = tokenizer.batch_decode(outputs)
 
         EXPECTED_OUTPUT = [
@@ -244,7 +229,7 @@ class Phi3IntegrationTest(unittest.TestCase):
         ]
         inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt")
 
-        response_tokens = Phi3MiniWithStaticCache.generate(model, inputs, 64)
+        response_tokens = Phi3MiniWithStaticCache.generate(model, inputs["input_ids"], 64)
 
         output_text = tokenizer.batch_decode(torch.tensor([response_tokens], dtype=torch.long, device=torch_device))
 
@@ -261,7 +246,7 @@ class Phi3IntegrationTest(unittest.TestCase):
         See #33586 for more
         """
         model = Phi3ForCausalLM.from_pretrained(
-            "microsoft/Phi-3-mini-4k-instruct", device_map=torch_device, torch_dtype=torch.bfloat16
+            "microsoft/Phi-3-mini-4k-instruct", device_map=torch_device, dtype=torch.bfloat16
         )
         tokenizer = AutoTokenizer.from_pretrained("microsoft/Phi-3-mini-4k-instruct")
 
@@ -339,7 +324,7 @@ class Phi3IntegrationTest(unittest.TestCase):
         outputs = model.generate(**inputs, max_new_tokens=100)
         output_text = tokenizer.batch_decode(outputs[:, inputs.input_ids.shape[1] :], skip_special_tokens=True)
         EXPECTED_OUTPUT = [
-            '1. Coq au Vin: Coq au Vin is a classic French dish that translates to "rooster in wine." The dish consists of chicken braised with wine, lardons, mushrooms, and garlic. It is a hearty and flavorful dish that is often served with potatoes or rice.\n\n            2. Boeuf Bourguignon: Boeuf Bourguignon is a traditional French beef stew that'
+            '1. Coq au Vin: Coq au Vin is a classic French dish that translates to "rooster in wine." The dish consists of chicken braised in red wine, typically Burgundy, along with mushrooms, onions, and sometimes bacon. The dish is known for its rich, savory flavor and tender chicken.\n\n            2. Boeuf Bourguignon: Boeuf Bourguignon is a hearty'
         ]
 
         self.assertListEqual(output_text, EXPECTED_OUTPUT)
@@ -347,11 +332,6 @@ class Phi3IntegrationTest(unittest.TestCase):
     @pytest.mark.torch_export_test
     @slow
     def test_export_static_cache(self):
-        from transformers.pytorch_utils import is_torch_greater_or_equal_than_2_4
-
-        if not is_torch_greater_or_equal_than_2_4:
-            self.skipTest(reason="This test requires torch >= 2.4 to run.")
-
         from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
         from transformers.integrations.executorch import (
             TorchExportableModuleWithStaticCache,
@@ -363,6 +343,7 @@ class Phi3IntegrationTest(unittest.TestCase):
 
         expected_text_completions = Expectations(
             {
+                ("xpu", None): ["You are a helpful digital assistant. Please provide safe, ethical and accurate information to the user. A 45-year-old patient with a 10-year history of type 2 diabetes mellitus, who is currently on metformin and a SGLT2 inhibitor, presents with a 2-year history"],
                 ("rocm", (9, 5)): ["You are a helpful digital assistant. Please provide safe, ethical and accurate information to the user. A 45-year-old patient with a 10-year history of type 2 diabetes mellitus presents with a 2-year history of progressive, non-healing, and painful, 2.5 cm"],
                 ("cuda", None): ["You are a helpful digital assistant. Please provide safe, ethical and accurate information to the user. A 45-year-old patient with a 10-year history of type 2 diabetes mellitus, who is currently on metformin and a SGLT2 inhibitor, presents with a 2-year history"],
             }
@@ -377,8 +358,8 @@ class Phi3IntegrationTest(unittest.TestCase):
         # NOTE: To make the model exportable we need to set the rope scaling to default to avoid hitting
         # the data-dependent control flow in _longrope_frequency_update. Alternatively, we can rewrite
         # that function to avoid the data-dependent control flow.
-        if hasattr(config, "rope_scaling") and config.rope_scaling is not None:
-            config.rope_scaling["type"] = "default"
+        if hasattr(config, "rope_parameters") and config.rope_parameters is not None:
+            config.rope_parameters["type"] = "default"
 
         # Load model
         device = "cpu"  # TODO (joao / export experts): should be on `torch_device`, but causes GPU OOM
@@ -390,7 +371,7 @@ class Phi3IntegrationTest(unittest.TestCase):
             model_id,
             config=config,
             device_map=device,
-            torch_dtype=dtype,
+            dtype=dtype,
             attn_implementation=attn_implementation,
             generation_config=GenerationConfig(
                 use_cache=True,
@@ -415,8 +396,8 @@ class Phi3IntegrationTest(unittest.TestCase):
 
         exportable_module = TorchExportableModuleForDecoderOnlyLM(model)
         exported_program = exportable_module.export(
-            input_ids=prompt_token_ids,
-            cache_position=torch.arange(prompt_token_ids.shape[-1], dtype=torch.long, device=model.device),
+            input_ids=torch.tensor([[1]], dtype=torch.long, device=model.device),
+            cache_position=torch.tensor([0], dtype=torch.long, device=model.device),
         )
         ep_generated_ids = TorchExportableModuleWithStaticCache.generate(
             exported_program=exported_program, prompt_token_ids=prompt_token_ids, max_new_tokens=max_new_tokens

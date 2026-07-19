@@ -13,13 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2021-11-11 and added to Hugging Face Transformers on 2022-01-18.*
-
+*This model was published in HF papers on 2021-11-11 and contributed to Hugging Face Transformers on 2022-01-18.*
 
 <div style="float: right;">
     <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-        <img alt="TensorFlow" src="https://img.shields.io/badge/TensorFlow-FF6F00?style=flat&logo=tensorflow&logoColor=white">
         <img alt="FlashAttention" src="https://img.shields.io/badge/%E2%9A%A1%EF%B8%8E%20FlashAttention-eae0c8?style=flat">
         <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
     </div>
@@ -30,7 +27,7 @@ rendered properly in your Markdown viewer.
 [ViTMAE](https://huggingface.co/papers/2111.06377) is a self-supervised vision model that is pretrained by masking large portions of an image (~75%). An encoder processes the visible image patches and a decoder reconstructs the missing pixels from the encoded patches and mask tokens. After pretraining, the encoder can be reused for downstream tasks like image classification or object detection — often outperforming models trained with supervised learning.
 
 <img src="https://user-images.githubusercontent.com/11435359/146857310-f258c86c-fde6-48e8-9cee-badd2b21bd2c.png"
-alt="drawing" width="600"/> 
+alt="drawing" width="600"/>
 
 You can find all the original ViTMAE checkpoints under the [AI at Meta](https://huggingface.co/facebook?search_models=vit-mae) organization.
 
@@ -43,21 +40,21 @@ The example below demonstrates how to reconstruct the missing pixels with the [`
 <hfoption id="AutoModel">
 
 ```python
-import torch
 import requests
+import torch
 from PIL import Image
-from transformers import infer_device, ViTImageProcessor, ViTMAEForPreTraining
 
-device = infer_device()
+from transformers import ViTImageProcessor, ViTMAEForPreTraining
+
 
 url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/pipeline-cat-chonk.jpeg"
 image = Image.open(requests.get(url, stream=True).raw)
 
 processor = ViTImageProcessor.from_pretrained("facebook/vit-mae-base")
-inputs = processor(image, return_tensors="pt")
-inputs = {k: v.to(device) for k, v in inputs.items()}
+inputs = processor(image, return_tensors="pt").to(model.device)
+inputs = {k: v.to(model.device) for k, v in inputs.items()}
 
-model = ViTMAEForPreTraining.from_pretrained("facebook/vit-mae-base", attn_implementation="sdpa").to(device)
+model = ViTMAEForPreTraining.from_pretrained("facebook/vit-mae-base", attn_implementation="sdpa", device_map="auto")
 with torch.no_grad():
     outputs = model(**inputs)
 
@@ -68,6 +65,7 @@ reconstruction = outputs.logits
 </hfoptions>
 
 ## Notes
+
 - ViTMAE is typically used in two stages. Self-supervised pretraining with [`ViTMAEForPreTraining`], and then discarding the decoder and fine-tuning the encoder. After fine-tuning, the weights can be plugged into a model like [`ViTForImageClassification`].
 - Use [`ViTImageProcessor`] for input preparation.
 
@@ -79,9 +77,6 @@ reconstruction = outputs.logits
 
 [[autodoc]] ViTMAEConfig
 
-<frameworkcontent>
-<pt>
-
 ## ViTMAEModel
 
 [[autodoc]] ViTMAEModel
@@ -91,19 +86,3 @@ reconstruction = outputs.logits
 
 [[autodoc]] transformers.ViTMAEForPreTraining
     - forward
-
-</pt>
-<tf>
-
-## TFViTMAEModel
-
-[[autodoc]] TFViTMAEModel
-    - call
-
-## TFViTMAEForPreTraining
-
-[[autodoc]] transformers.TFViTMAEForPreTraining
-    - call
-
-</tf>
-</frameworkcontent>

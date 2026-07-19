@@ -13,12 +13,11 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2024-05-03 and added to Hugging Face Transformers on 2024-04-15.*
+*This model was published in HF papers on 2024-05-03 and contributed to Hugging Face Transformers on 2024-04-15.*
 
 # Idefics2
 
 <div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
 <img alt="FlashAttention" src="https://img.shields.io/badge/%E2%9A%A1%EF%B8%8E%20FlashAttention-eae0c8?style=flat">
 <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
 </div>
@@ -57,10 +56,9 @@ Example of how to use the processor on chat messages:
 ```python
 import requests
 from PIL import Image
-from transformers import Idefics2Processor, Idefics2ForConditionalGeneration
-import torch
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+from transformers import Idefics2ForConditionalGeneration, Idefics2Processor
+
 
 url_1 = "http://images.cocodataset.org/val2017/000000039769.jpg"
 url_2 = "http://images.cocodataset.org/val2017/000000219578.jpg"
@@ -79,15 +77,14 @@ messages = [{
 }]
 
 processor = Idefics2Processor.from_pretrained("HuggingFaceM4/idefics2-8b")
-model = Idefics2ForConditionalGeneration.from_pretrained("HuggingFaceM4/idefics2-8b")
-model.to(device)
+model = Idefics2ForConditionalGeneration.from_pretrained("HuggingFaceM4/idefics2-8b", device_map="auto")
 
 # at inference time, one needs to pass `add_generation_prompt=True` in order to make sure the model completes the prompt
 text = processor.apply_chat_template(messages, add_generation_prompt=True)
 print(text)
 # 'User: What’s the difference between these two images?<image><image><end_of_utterance>\nAssistant:'
 
-inputs = processor(images=images, text=text, return_tensors="pt").to(device)
+inputs = processor(images=images, text=text, return_tensors="pt").to(model.device)
 
 generated_text = model.generate(**inputs, max_new_tokens=500)
 generated_text = processor.batch_decode(generated_text, skip_special_tokens=True)[0]
@@ -99,8 +96,9 @@ print("Generated text:", generated_text)
 ```python
 import requests
 from PIL import Image
-from transformers import Idefics2Processor, Idefics2ForConditionalGeneration
-import torch
+
+from transformers import Idefics2ForConditionalGeneration, Idefics2Processor
+
 
 url_1 = "http://images.cocodataset.org/val2017/000000039769.jpg"
 url_2 = "http://images.cocodataset.org/val2017/000000219578.jpg"
@@ -124,14 +122,12 @@ messages = [{
     ],
 }]
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 processor = Idefics2Processor.from_pretrained("HuggingFaceM4/idefics2-8b")
-model = Idefics2ForConditionalGeneration.from_pretrained("HuggingFaceM4/idefics2-8b")
-model.to(device)
+model = Idefics2ForConditionalGeneration.from_pretrained("HuggingFaceM4/idefics2-8b", device_map="auto")
 
 text = processor.apply_chat_template(messages, add_generation_prompt=False)
-inputs = processor(images=images, text=text, return_tensors="pt").to(device)
+inputs = processor(images=images, text=text, return_tensors="pt").to(model.device)
 
 labels = inputs.input_ids.clone()
 labels[labels == processor.tokenizer.pad_token_id] = -100
@@ -163,16 +159,17 @@ To load and run a model using Flash Attention-2, simply change the code snippet 
 ```diff
 model = Idefics2ForConditionalGeneration.from_pretrained(
     "HuggingFaceM4/idefics2-8b",
-+    torch_dtype=torch.float16,
++    dtype=torch.float16,
 +    attn_implementation="flash_attention_2",
-).to(device)
+    device_map="auto",
+)
 ```
 
 ## Shrinking down Idefics2 using quantization
 
-As the Idefics2 model has 8 billion parameters, that would require about 16GB of GPU RAM in half precision (float16), since each parameter is stored in 2 bytes. However, one can shrink down the size of the model using [quantization](../quantization). If the model is quantized to 4 bits (or half a byte per parameter), that requires only about 3.5GB of RAM.
+As the Idefics2 model has 8 billion parameters, that would require about 16GB of GPU RAM in half precision (float16), since each parameter is stored in 2 bytes. However, one can shrink down the size of the model using [quantization](../quantization/overview). If the model is quantized to 4 bits (or half a byte per parameter), that requires only about 3.5GB of RAM.
 
-Quantizing a model is as simple as passing a `quantization_config` to the model. One can change the code snippet above with the changes below. We'll leverage the BitsAndyBytes quantization (but refer to [this page](../quantization) for other quantization methods):
+Quantizing a model is as simple as passing a `quantization_config` to the model. One can change the code snippet above with the changes below. We'll leverage the BitsAndyBytes quantization (but refer to [this page](../quantization/overview) for other quantization methods):
 
 ```diff
 + from transformers import BitsAndBytesConfig
@@ -185,9 +182,10 @@ Quantizing a model is as simple as passing a `quantization_config` to the model.
 + )
 model = Idefics2ForConditionalGeneration.from_pretrained(
     "HuggingFaceM4/idefics2-8b",
-+    torch_dtype=torch.float16,
++    dtype=torch.float16,
 +    quantization_config=quantization_config,
-).to(device)
+    device_map="auto",
+)
 ```
 
 ## Resources
@@ -202,27 +200,37 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 [[autodoc]] Idefics2Config
 
+## Idefics2VisionConfig
+
+[[autodoc]] Idefics2VisionConfig
+
+## Idefics2PerceiverConfig
+
+[[autodoc]] Idefics2PerceiverConfig
 
 ## Idefics2Model
 
 [[autodoc]] Idefics2Model
     - forward
-
+    - get_image_features
 
 ## Idefics2ForConditionalGeneration
 
 [[autodoc]] Idefics2ForConditionalGeneration
     - forward
-
+    - get_image_features
 
 ## Idefics2ImageProcessor
+
 [[autodoc]] Idefics2ImageProcessor
     - preprocess
 
-## Idefics2ImageProcessorFast
-[[autodoc]] Idefics2ImageProcessorFast
+## Idefics2ImageProcessorPil
+
+[[autodoc]] Idefics2ImageProcessorPil
     - preprocess
 
 ## Idefics2Processor
+
 [[autodoc]] Idefics2Processor
     - __call__

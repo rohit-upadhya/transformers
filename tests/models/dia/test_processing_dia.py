@@ -42,7 +42,7 @@ def check_models_equal(model1, model2):
 class DiaProcessorTest(unittest.TestCase):
     def setUp(self):
         self.checkpoint = "AntonV/Dia-1.6B"
-        self.audio_tokenizer_checkpoint = "descript/dac_44khz"
+        self.audio_tokenizer_checkpoint = "hf-internal-testing/tiny-dac-44khz"
         self.tmpdirname = tempfile.mkdtemp()
 
         # Audio tokenizer is a bigger model so we will reuse this if possible
@@ -118,15 +118,6 @@ class DiaProcessorTest(unittest.TestCase):
         self.assertEqual(processor.audio_tokenizer.name_or_path, audio_tokenizer_add_kwargs.name_or_path)
         self.assertTrue(check_models_equal(processor.audio_tokenizer, audio_tokenizer_add_kwargs))
         self.assertIsInstance(processor.audio_tokenizer, DacModel)
-
-    def test_model_input_names(self):
-        tokenizer = self.get_tokenizer()
-
-        self.assertListEqual(
-            self.processor.model_input_names,
-            list(dict.fromkeys(tokenizer.model_input_names + ["decoder_input_ids", "decoder_attention_mask"])),
-            msg="`processor` model input names do not match the expected names.",
-        )
 
     def test_tokenize(self):
         tokenizer = self.get_tokenizer()

@@ -14,10 +14,11 @@
 """Testing suite for the PyTorch MobileNetV1 model."""
 
 import unittest
+from functools import cached_property
 
 from transformers import MobileNetV1Config
 from transformers.testing_utils import Expectations, require_torch, require_vision, slow, torch_device
-from transformers.utils import cached_property, is_torch_available, is_vision_available
+from transformers.utils import is_torch_available, is_vision_available
 
 from ...test_configuration_common import ConfigTester
 from ...test_modeling_common import ModelTesterMixin, floats_tensor, ids_tensor
@@ -33,7 +34,7 @@ if is_torch_available():
 if is_vision_available():
     from PIL import Image
 
-    from transformers import MobileNetV1ImageProcessor
+    from transformers import MobileNetV1ImageProcessorPil
 
 
 class MobileNetV1ConfigTester(ConfigTester):
@@ -149,11 +150,8 @@ class MobileNetV1ModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestC
         else {}
     )
 
-    test_pruning = False
     test_resize_embeddings = False
-    test_head_masking = False
     has_attentions = False
-    test_torch_exportable = True
 
     def setUp(self):
         self.model_tester = MobileNetV1ModelTester(self)
@@ -227,7 +225,9 @@ class MobileNetV1ModelIntegrationTest(unittest.TestCase):
     @cached_property
     def default_image_processor(self):
         return (
-            MobileNetV1ImageProcessor.from_pretrained("google/mobilenet_v1_1.0_224") if is_vision_available() else None
+            MobileNetV1ImageProcessorPil.from_pretrained("google/mobilenet_v1_1.0_224")
+            if is_vision_available()
+            else None
         )
 
     @slow

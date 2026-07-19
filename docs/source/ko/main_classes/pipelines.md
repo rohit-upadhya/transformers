@@ -108,7 +108,7 @@ from transformers import pipeline
 from transformers.pipelines.pt_utils import KeyDataset
 import datasets
 
-dataset = datasets.load_dataset("imdb", name="plain_text", split="unsupervised")
+dataset = datasets.load_dataset("stanfordnlp/imdb", name="plain_text", split="unsupervised")
 pipe = pipeline("text-classification", device=0)
 for out in pipe(KeyDataset(dataset, "text"), batch_size=8, truncation="only_first"):
     print(out)
@@ -249,7 +249,7 @@ outputs = pipe.postprocess(all_model_outputs)
 
 모델은 FP16 모드로 실행할 수 있으며, GPU에서 메모리를 절약하면서 처리 속도를 크게 향상시킬 수 있습니다. 대부분의 모델은 성능 저하 없이 FP16을 지원하며, 모델이 클수록 성능 저하 가능성은 더 낮아집니다.
 
-FP16 추론을 활성화하려면 파이프라인 생성자에 `torch_dtype=torch.float16` 또는 `torch_dtype='float16'`을 전달하세요. 이 기능은 파이토치 백엔드를 사용하는 모델에서만 작동하며, 입력은 내부적으로 FP16 형식으로 변환됩니다.
+FP16 추론을 활성화하려면 파이프라인 생성자에 `dtype=torch.float16` 또는 `dtype='float16'`을 전달하세요. 이 기능은 파이토치 백엔드를 사용하는 모델에서만 작동하며, 입력은 내부적으로 FP16 형식으로 변환됩니다.
 
 ## 파이프라인 사용자 정의 코드 [[pipeline-custom-code]]
 
@@ -325,12 +325,6 @@ my_pipeline = pipeline(model="xxxx", pipeline_class=MyPipeline)
     - __call__
     - all
 
-### ImageToImagePipeline [[transformers.ImageToImagePipeline]]
-
-[[autodoc]] ImageToImagePipeline
-    - __call__
-    - all
-
 ### ObjectDetectionPipeline [[transformers.ObjectDetectionPipeline]]
 
 [[autodoc]] ObjectDetectionPipeline
@@ -365,18 +359,6 @@ my_pipeline = pipeline(model="xxxx", pipeline_class=MyPipeline)
     - __call__
     - all
 
-### QuestionAnsweringPipeline [[transformers.QuestionAnsweringPipeline]]
-
-[[autodoc]] QuestionAnsweringPipeline
-    - __call__
-    - all
-
-### SummarizationPipeline [[transformers.SummarizationPipeline]]
-
-[[autodoc]] SummarizationPipeline
-    - __call__
-    - all
-
 ### TableQuestionAnsweringPipeline [[transformers.TableQuestionAnsweringPipeline]]
 
 [[autodoc]] TableQuestionAnsweringPipeline
@@ -394,21 +376,9 @@ my_pipeline = pipeline(model="xxxx", pipeline_class=MyPipeline)
     - __call__
     - all
 
-### Text2TextGenerationPipeline [[transformers.Text2TextGenerationPipeline]]
-
-[[autodoc]] Text2TextGenerationPipeline
-    - __call__
-    - all
-
 ### TokenClassificationPipeline [[transformers.TokenClassificationPipeline]]
 
 [[autodoc]] TokenClassificationPipeline
-    - __call__
-    - all
-
-### TranslationPipeline [[transformers.TranslationPipeline]]
-
-[[autodoc]] TranslationPipeline
     - __call__
     - all
 
@@ -440,12 +410,6 @@ my_pipeline = pipeline(model="xxxx", pipeline_class=MyPipeline)
     - __call__
     - all
 
-### ImageToTextPipeline [[transformers.ImageToTextPipeline]]
-
-[[autodoc]] ImageToTextPipeline
-    - __call__
-    - all
-
 ### ImageTextToTextPipeline [[transformers.ImageTextToTextPipeline]]
 
 [[autodoc]] ImageTextToTextPipeline
@@ -455,12 +419,6 @@ my_pipeline = pipeline(model="xxxx", pipeline_class=MyPipeline)
 ### MaskGenerationPipeline [[transformers.MaskGenerationPipeline]]
 
 [[autodoc]] MaskGenerationPipeline
-    - __call__
-    - all
-
-### VisualQuestionAnsweringPipeline [[transformers.VisualQuestionAnsweringPipeline]]
-
-[[autodoc]] VisualQuestionAnsweringPipeline
     - __call__
     - all
 

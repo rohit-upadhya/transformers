@@ -13,9 +13,11 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2025-01-14 and added to Hugging Face Transformers on 2025-06-04.*
+*This model was published in HF papers on 2025-01-14 and contributed to Hugging Face Transformers on 2025-06-04.*
 
 # MiniMax
+
+> [MiniMax-M2](https://huggingface.co/docs/transformers/en/model_doc/minimax_m2) was released on 2025‑10‑27. We recommend using MiniMax‑M2 for most use cases due to better overall performance.
 
 ## Overview
 
@@ -35,12 +37,12 @@ The architecture of MiniMax is briefly described as follows:
 - Activated Parameters per Token: 45.9B
 - Number Layers: 80
 - Hybrid Attention: a softmax attention is positioned after every 7 lightning attention.
-    - Number of attention heads: 64
-    - Attention head dimension: 128
+  - Number of attention heads: 64
+  - Attention head dimension: 128
 - Mixture of Experts:
-    - Number of experts: 32
-    - Expert hidden dimension: 9216
-    - Top-2 routing strategy
+  - Number of experts: 32
+  - Expert hidden dimension: 9216
+  - Top-2 routing strategy
 - Positional Encoding: Rotary Position Embedding (RoPE) applied to half of the attention head dimension with a base frequency of 10,000,000
 - Hidden Size: 6144
 - Vocab Size: 200,064
@@ -56,21 +58,22 @@ For more details refer to the [release blog post](https://www.minimaxi.com/en/ne
 The pre-trained model can be used as follows:
 
 ```python
->>> from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
->>> model = AutoModelForCausalLM.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf", device_map="auto")
->>> tokenizer = AutoTokenizer.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf")
 
->>> messages = [
-...     {"role": "user", "content": "What is your favourite condiment?"},
-...     {"role": "assistant", "content": "Well, I'm quite partial to a good squeeze of fresh lemon juice. It adds just the right amount of zesty flavour to whatever I'm cooking up in the kitchen!"},
-...     {"role": "user", "content": "Do you have mayonnaise recipes?"}
-... ]
+model = AutoModelForCausalLM.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf", device_map="auto")
+tokenizer = AutoTokenizer.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf")
 
->>> model_inputs = tokenizer.apply_chat_template(messages, return_tensors="pt").to("cuda")
+messages = [
+    {"role": "user", "content": "What is your favourite condiment?"},
+    {"role": "assistant", "content": "Well, I'm quite partial to a good squeeze of fresh lemon juice. It adds just the right amount of zesty flavour to whatever I'm cooking up in the kitchen!"},
+    {"role": "user", "content": "Do you have mayonnaise recipes?"}
+]
 
->>> generated_ids = model.generate(model_inputs, max_new_tokens=100, do_sample=True)
->>> tokenizer.batch_decode(generated_ids)[0]
+model_inputs = tokenizer.apply_chat_template(messages, return_tensors="pt").to(model.device)
+
+generated_ids = model.generate(model_inputs, max_new_tokens=100, do_sample=True)
+tokenizer.batch_decode(generated_ids)[0]
 "Mayonnaise can be made as follows: (...)"
 ```
 
@@ -91,61 +94,61 @@ Make also sure that you have a hardware that is compatible with Flash-Attention 
 To load and run a model using Flash Attention-2, refer to the snippet below:
 
 ```python
->>> import torch
->>> from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
->>> model = AutoModelForCausalLM.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf", torch_dtype=torch.float16, attn_implementation="flash_attention_2", device_map="auto")
->>> tokenizer = AutoTokenizer.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf")
 
->>> prompt = "My favourite condiment is"
+model = AutoModelForCausalLM.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf", attn_implementation="flash_attention_2", device_map="auto")
+tokenizer = AutoTokenizer.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf")
 
->>> model_inputs = tokenizer([prompt], return_tensors="pt").to("cuda")
->>> model.to(device)
+prompt = "My favourite condiment is"
 
->>> generated_ids = model.generate(**model_inputs, max_new_tokens=100, do_sample=True)
->>> tokenizer.batch_decode(generated_ids)[0]
+model_inputs = tokenizer([prompt], return_tensors="pt").to(model.device)
+model.to(model.device)
+
+generated_ids = model.generate(**model_inputs, max_new_tokens=100, do_sample=True)
+tokenizer.batch_decode(generated_ids)[0]
 "The expected output"
 ```
 
 ### Sliding window Attention
 
-The current implementation supports the sliding window attention mechanism and memory efficient cache management. 
-To enable sliding window attention, just make sure to have a `flash-attn` version that is compatible with sliding window attention (`>=2.3.0`). 
+The current implementation supports the sliding window attention mechanism and memory efficient cache management.
+To enable sliding window attention, just make sure to have a `flash-attn` version that is compatible with sliding window attention (`>=2.3.0`).
 
 The Flash Attention-2 model uses also a more memory efficient cache slicing mechanism - as recommended per the official implementation of Mistral model that use rolling cache mechanism we keep the cache size fixed (`self.config.sliding_window`), support batched generation only for `padding_side="left"` and use the absolute position of the current token to compute the positional embedding.
 
 ## Shrinking down MiniMax using quantization
 
-As the MiniMax model has 456 billion parameters, that would require about 912GB of GPU RAM in half precision (float16), since each parameter is stored in 2 bytes. However, one can shrink down the size of the model using [quantization](../quantization). If the model is quantized to 4 bits (or half a byte per parameter), about 228 GB of RAM is required.
+As the MiniMax model has 456 billion parameters, that would require about 912GB of GPU RAM in half precision (float16), since each parameter is stored in 2 bytes. However, one can shrink down the size of the model using [quantization](../quantization/overview). If the model is quantized to 4 bits (or half a byte per parameter), about 228 GB of RAM is required.
 
-Quantizing a model is as simple as passing a `quantization_config` to the model. Below, we'll leverage the bitsandbytes quantization library (but refer to [this page](../quantization) for alternative quantization methods):
+Quantizing a model is as simple as passing a `quantization_config` to the model. Below, we'll leverage the bitsandbytes quantization library (but refer to [this page](../quantization/overview) for alternative quantization methods):
 
 ```python
->>> import torch
->>> from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
->>> # specify how to quantize the model
->>> quantization_config = BitsAndBytesConfig(
-...         load_in_4bit=True,
-...         bnb_4bit_quant_type="nf4",
-...         bnb_4bit_compute_dtype="torch.float16",
-... )
 
->>> model = AutoModelForCausalLM.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf", quantization_config=True, device_map="auto")
->>> tokenizer = AutoTokenizer.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf")
+# specify how to quantize the model
+quantization_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype="torch.float16",
+)
 
->>> prompt = "My favourite condiment is"
+model = AutoModelForCausalLM.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf", quantization_config=True, device_map="auto")
+tokenizer = AutoTokenizer.from_pretrained("MiniMaxAI/MiniMax-Text-01-hf")
 
->>> messages = [
-...     {"role": "user", "content": "What is your favourite condiment?"},
-...     {"role": "assistant", "content": "Well, I'm quite partial to a good squeeze of fresh lemon juice. It adds just the right amount of zesty flavour to whatever I'm cooking up in the kitchen!"},
-...     {"role": "user", "content": "Do you have mayonnaise recipes?"}
-... ]
+prompt = "My favourite condiment is"
 
->>> model_inputs = tokenizer.apply_chat_template(messages, return_tensors="pt").to("cuda")
+messages = [
+    {"role": "user", "content": "What is your favourite condiment?"},
+    {"role": "assistant", "content": "Well, I'm quite partial to a good squeeze of fresh lemon juice. It adds just the right amount of zesty flavour to whatever I'm cooking up in the kitchen!"},
+    {"role": "user", "content": "Do you have mayonnaise recipes?"}
+]
 
->>> generated_ids = model.generate(model_inputs, max_new_tokens=100, do_sample=True)
->>> tokenizer.batch_decode(generated_ids)[0]
+model_inputs = tokenizer.apply_chat_template(messages, return_tensors="pt").to(model.device)
+
+generated_ids = model.generate(model_inputs, max_new_tokens=100, do_sample=True)
+tokenizer.batch_decode(generated_ids)[0]
 "The expected output"
 ```
 
@@ -186,5 +189,6 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
     - forward
 
 ## MiniMaxForQuestionAnswering
+
 [[autodoc]] MiniMaxForQuestionAnswering
     - forward

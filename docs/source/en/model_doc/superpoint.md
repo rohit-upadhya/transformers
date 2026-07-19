@@ -11,7 +11,7 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2017-12-20 and added to Hugging Face Transformers on 2024-03-19.*
+*This model was published in HF papers on 2017-12-20 and contributed to Hugging Face Transformers on 2024-03-19.*
 
 <div style="float: right;">
     <div class="flex flex-wrap space-x-1">
@@ -33,25 +33,25 @@ You can find all the original SuperPoint checkpoints under the [Magic Leap Commu
 >
 > Click on the SuperPoint models in the right sidebar for more examples of how to apply SuperPoint to different computer vision tasks.
 
-
-
 The example below demonstrates how to detect interest points in an image with the [`AutoModel`] class.
 <hfoptions id="usage">
 <hfoption id="AutoModel">
 
-```py
-from transformers import AutoImageProcessor, SuperPointForKeypointDetection
+```python
+import requests
 import torch
 from PIL import Image
-import requests
+
+from transformers import AutoImageProcessor, SuperPointForKeypointDetection
+
 
 url = "http://images.cocodataset.org/val2017/000000039769.jpg"
 image = Image.open(requests.get(url, stream=True).raw)
 
 processor = AutoImageProcessor.from_pretrained("magic-leap-community/superpoint")
-model = SuperPointForKeypointDetection.from_pretrained("magic-leap-community/superpoint")
+model = SuperPointForKeypointDetection.from_pretrained("magic-leap-community/superpoint", device_map="auto")
 
-inputs = processor(image, return_tensors="pt")
+inputs = processor(image, return_tensors="pt").to(model.device)
 with torch.no_grad():
     outputs = model(**inputs)
 
@@ -73,13 +73,13 @@ processed_outputs = processor.post_process_keypoint_detection(outputs, [image_si
     from PIL import Image
     import requests
     processor = AutoImageProcessor.from_pretrained("magic-leap-community/superpoint")
-    model = SuperPointForKeypointDetection.from_pretrained("magic-leap-community/superpoint")
+    model = SuperPointForKeypointDetection.from_pretrained("magic-leap-community/superpoint", device_map="auto")
     url_image_1 = "http://images.cocodataset.org/val2017/000000039769.jpg"
     image_1 = Image.open(requests.get(url_image_1, stream=True).raw)
     url_image_2 = "http://images.cocodataset.org/test-stuff2017/000000000568.jpg"
     image_2 = Image.open(requests.get(url_image_2, stream=True).raw)
     images = [image_1, image_2]
-    inputs = processor(images, return_tensors="pt")
+    inputs = processor(images, return_tensors="pt").to(model.device)
     # Example of handling dynamic keypoint output
     outputs = model(**inputs)
     keypoints = outputs.keypoints  # Shape varies per image
@@ -94,13 +94,14 @@ processed_outputs = processor.post_process_keypoint_detection(outputs, [image_si
     ```py
     # Batch processing example
     images = [image1, image2, image3]
-    inputs = processor(images, return_tensors="pt")
+    inputs = processor(images, return_tensors="pt").to(model.device)
     outputs = model(**inputs)
     image_sizes = [(img.height, img.width) for img in images]
     processed_outputs = processor.post_process_keypoint_detection(outputs, image_sizes)
     ```
 
 - You can then print the keypoints on the image of your choice to visualize the result:
+
     ```py
     import matplotlib.pyplot as plt
     plt.axis("off")
@@ -121,7 +122,7 @@ processed_outputs = processor.post_process_keypoint_detection(outputs, [image_si
 
 ## Resources
 
-- Refer to this [noteboook](https://github.com/NielsRogge/Transformers-Tutorials/blob/master/SuperPoint/Inference_with_SuperPoint_to_detect_interest_points_in_an_image.ipynb) for an inference and visualization example.
+- Refer to this [notebook](https://github.com/NielsRogge/Transformers-Tutorials/blob/master/SuperPoint/Inference_with_SuperPoint_to_detect_interest_points_in_an_image.ipynb) for an inference and visualization example.
 
 ## SuperPointConfig
 
@@ -130,21 +131,15 @@ processed_outputs = processor.post_process_keypoint_detection(outputs, [image_si
 ## SuperPointImageProcessor
 
 [[autodoc]] SuperPointImageProcessor
+    - preprocess
 
-- preprocess
+## SuperPointImageProcessorPil
 
-## SuperPointImageProcessorFast
+[[autodoc]] SuperPointImageProcessorPil
+    - preprocess
+    - post_process_keypoint_detection
 
-[[autodoc]] SuperPointImageProcessorFast
-- preprocess
-- post_process_keypoint_detection
-
-<frameworkcontent>
-<pt>
 ## SuperPointForKeypointDetection
 
 [[autodoc]] SuperPointForKeypointDetection
-
-- forward
-
-</pt>
+    - forward

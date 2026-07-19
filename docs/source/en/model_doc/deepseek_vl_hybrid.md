@@ -13,18 +13,17 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2024-03-08 and added to Hugging Face Transformers on 2025-07-25.*
+*This model was published in HF papers on 2024-03-08 and contributed to Hugging Face Transformers on 2025-07-25.*
 
 <div style="float: right;">
     <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
         <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
     </div>
 </div>
 
 # DeepseekVLHybrid
 
-[Deepseek-VL-Hybrid](https://huggingface.co/papers/2403.05525) was introduced by the DeepSeek AI team. It is a vision-language model (VLM) designed to process both text and images for generating contextually relevant responses. The model leverages [LLaMA](./llama) as its text encoder, while [SigLip](./siglip) is used for encoding low-resolution images and [SAM (Segment Anything Model)](./sam) is incorporated to handle high-resolution image encoding, enhancing the model’s ability to process fine-grained visual details. Deepseek-VL-Hybrid is a variant of Deepseek-VL that uses [SAM (Segment Anything Model)](./sam) to handle high-resolution image encoding.
+[Deepseek-VL-Hybrid](https://huggingface.co/papers/2403.05525) was introduced by the DeepSeek AI team. It is a vision-language model (VLM) designed to process both text and images for generating contextually relevant responses. The model leverages [LLaMA](./llama) as its text encoder, while [SigLip](./siglip) is used for encoding low-resolution images and [SAM (Segment Anything Model)](./sam) is incorporated to handle high-resolution image encoding, enhancing the model's ability to process fine-grained visual details. Deepseek-VL-Hybrid is a variant of Deepseek-VL that uses [SAM (Segment Anything Model)](./sam) to handle high-resolution image encoding.
 
 You can find all the original Deepseek-VL-Hybrid checkpoints under the [DeepSeek-community](https://huggingface.co/deepseek-community) organization.
 
@@ -36,15 +35,14 @@ The example below demonstrates how to generate text based on an image with [`Pip
 <hfoptions id="usage">
 <hfoption id="Pipeline">
 
-```py
-import torch
+```python
 from transformers import pipeline
+
 
 pipe = pipeline(
     task="image-text-to-text",
     model="deepseek-community/deepseek-vl-7b-chat",
     device=0,
-    torch_dtype=torch.float16
 )
 
 messages = [
@@ -62,17 +60,17 @@ messages = [
 
 pipe(text=messages, max_new_tokens=20, return_full_text=False)
 ```
+
 </hfoption>
 
 <hfoption id="AutoModel">
 
-```py
-import torch
-from transformers import DeepseekVLHybridForConditionalGeneration, AutoProcessor
+```python
+from transformers import AutoProcessor, DeepseekVLHybridForConditionalGeneration
+
 
 model = DeepseekVLHybridForConditionalGeneration.from_pretrained(
     "deepseek-community/deepseek-vl-7b-chat",
-    torch_dtype=torch.float16,
     device_map="auto",
     attn_implementation="sdpa"
 )
@@ -114,6 +112,7 @@ output_text = processor.batch_decode(
 
 print(output_text)
 ```
+
 </hfoption>
 </hfoptions>
 
@@ -122,8 +121,8 @@ Quantization reduces the memory burden of large models by representing the weigh
 The example below uses [torchao](../quantization/torchao) to only quantize the weights to int4.
 
 ```python
-import torch
-from transformers import TorchAoConfig, DeepseekVLHybridForConditionalGeneration, AutoProcessor
+from transformers import DeepseekVLHybridForConditionalGeneration, TorchAoConfig
+
 
 quantization_config = TorchAoConfig(
     "int4_weight_only",
@@ -132,21 +131,21 @@ quantization_config = TorchAoConfig(
 
 model = DeepseekVLHybridForConditionalGeneration.from_pretrained(
     "deepseek-community/deepseek-vl-7b-chat",
-    torch_dtype=torch.bfloat16,
     device_map="auto",
     quantization_config=quantization_config
 )
 ```
+
 ### Notes
 
 - Do inference with multiple images in a single conversation.
+
     ```py
     import torch
     from transformers import DeepseekVLHybridForConditionalGeneration, AutoProcessor
 
     model = DeepseekVLHybridForConditionalGeneration.from_pretrained(
         "deepseek-community/deepseek-vl-7b-chat",
-        torch_dtype=torch.float16,
         device_map="auto",
         attn_implementation="sdpa"
     )
@@ -204,19 +203,23 @@ model = DeepseekVLHybridForConditionalGeneration.from_pretrained(
 ## DeepseekVLHybridProcessor
 
 [[autodoc]] DeepseekVLHybridProcessor
+    - __call__
 
 ## DeepseekVLHybridImageProcessor
 
 [[autodoc]] DeepseekVLHybridImageProcessor
+    - preprocess
 
-## DeepseekVLHybridImageProcessorFast
+## DeepseekVLHybridImageProcessorPil
 
-[[autodoc]] DeepseekVLHybridImageProcessorFast
+[[autodoc]] DeepseekVLHybridImageProcessorPil
+    - preprocess
 
 ## DeepseekVLHybridModel
 
 [[autodoc]] DeepseekVLHybridModel
     - forward
+    - get_image_features
 
 ## DeepseekVLHybridForConditionalGeneration
 

@@ -13,7 +13,7 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2023-06-02 and added to Hugging Face Transformers on 2025-04-28.*
+*This model was published in HF papers on 2023-06-02 and contributed to Hugging Face Transformers on 2025-04-28.*
 
 # SAM-HQ
 
@@ -24,7 +24,6 @@ SAM-HQ (High-Quality Segment Anything Model) was proposed in [Segment Anything i
 The model is an enhancement to the original SAM model that produces significantly higher quality segmentation masks while maintaining SAM's original promptable design, efficiency, and zero-shot generalizability.
 
 ![example image](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/model_doc/sam-output.png)
-
 
 SAM-HQ introduces several key improvements over the original SAM model:
 
@@ -54,13 +53,14 @@ The original code can be found [here](https://github.com/SysCV/SAM-HQ).
 Below is an example on how to run mask generation given an image and a 2D point:
 
 ```python
+import requests
 import torch
 from PIL import Image
-import requests
-from transformers import infer_device, SamHQModel, SamHQProcessor
 
-device = infer_device()
-model = SamHQModel.from_pretrained("syscv-community/sam-hq-vit-base").to(device)
+from transformers import SamHQModel, SamHQProcessor
+
+
+model = SamHQModel.from_pretrained("syscv-community/sam-hq-vit-base", device_map="auto")
 processor = SamHQProcessor.from_pretrained("syscv-community/sam-hq-vit-base")
 
 img_url = "https://huggingface.co/ybelkada/segment-anything/resolve/main/assets/car.png"
@@ -80,13 +80,14 @@ scores = outputs.iou_scores
 You can also process your own masks alongside the input images in the processor to be passed to the model:
 
 ```python
+import requests
 import torch
 from PIL import Image
-import requests
-from transformers import infer_device, SamHQModel, SamHQProcessor
 
-device = infer_device()
-model = SamHQModel.from_pretrained("syscv-community/sam-hq-vit-base").to(device)
+from transformers import SamHQModel, SamHQProcessor
+
+
+model = SamHQModel.from_pretrained("syscv-community/sam-hq-vit-base", device_map="auto")
 processor = SamHQProcessor.from_pretrained("syscv-community/sam-hq-vit-base")
 
 img_url = "https://huggingface.co/ybelkada/segment-anything/resolve/main/assets/car.png"
@@ -104,7 +105,6 @@ masks = processor.image_processor.post_process_masks(
 )
 scores = outputs.iou_scores
 ```
-
 
 ## Resources
 
@@ -132,11 +132,11 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 ## SamHQProcessor
 
 [[autodoc]] SamHQProcessor
+    - __call__
 
 ## SamHQVisionModel
 
 [[autodoc]] SamHQVisionModel
-
 
 ## SamHQModel
 

@@ -13,12 +13,11 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2024-08-06 and added to Hugging Face Transformers on 2024-09-05.*
+*This model was published in HF papers on 2024-08-06 and contributed to Hugging Face Transformers on 2024-09-05.*
 
 # LLaVA-OneVision
 
 <div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
 <img alt="FlashAttention" src="https://img.shields.io/badge/%E2%9A%A1%EF%B8%8E%20FlashAttention-eae0c8?style=flat">
 <img alt="SDPA" src="https://img.shields.io/badge/SDPA-DE3412?style=flat&logo=pytorch&logoColor=white">
 </div>
@@ -54,22 +53,22 @@ Tips:
 
 </Tip>
 
-
 ### Formatting Prompts with Chat Templates  
 
 Each **checkpoint** is trained with a specific prompt format, depending on the underlying large language model backbone. To ensure correct formatting, use the processor’s `apply_chat_template` method.  
 
 **Important:**  
+
 - You must construct a conversation history — passing a plain string won't work.  
 - Each message should be a dictionary with `"role"` and `"content"` keys.  
 - The `"content"` should be a list of dictionaries for different modalities like `"text"` and `"image"`.  
 
-
-Here’s an example of how to structure your input. 
+Here’s an example of how to structure your input.
 We will use [llava-onevision-qwen2-7b-si-hf](https://huggingface.co/llava-hf/llava-onevision-qwen2-7b-si-hf) and a conversation history of text and image. Each content field has to be a list of dicts, as follows:
 
 ```python
 from transformers import AutoProcessor
+
 
 processor = AutoProcessor.from_pretrained("llava-hf/llava-onevision-qwen2-7b-si-hf")
 
@@ -103,10 +102,8 @@ print(text_prompt)
 
 🚀 **Bonus:** If you're using `transformers>=4.49.0`, you can also get a vectorized output from `apply_chat_template`. See the **Usage Examples** below for more details on how to use it.
 
-
 This model was contributed by [RaushanTurganbay](https://huggingface.co/RaushanTurganbay).
 The original code can be found [here](https://github.com/LLaVA-VL/LLaVA-NeXT/tree/main).
-
 
 ## Usage example
 
@@ -115,14 +112,15 @@ The original code can be found [here](https://github.com/LLaVA-VL/LLaVA-NeXT/tre
 Here's how to load the model and perform inference in half-precision (`torch.float16`):
 
 ```python
-from transformers import AutoProcessor, LlavaOnevisionForConditionalGeneration
 import torch
 
-processor = AutoProcessor.from_pretrained("llava-hf/llava-onevision-qwen2-7b-ov-hf") 
+from transformers import AutoProcessor, LlavaOnevisionForConditionalGeneration
+
+
+processor = AutoProcessor.from_pretrained("llava-hf/llava-onevision-qwen2-7b-ov-hf")
 model = LlavaOnevisionForConditionalGeneration.from_pretrained(
     "llava-hf/llava-onevision-qwen2-7b-ov-hf",
-    torch_dtype=torch.float16,
-    device_map="cuda:0"
+    device_map="auto"
 )
 
 # prepare image and text prompt, using the appropriate prompt template
@@ -136,8 +134,8 @@ conversation = [
         ],
     },
 ]
-inputs = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt")
-inputs = inputs.to("cuda:0", torch.float16)
+inputs = processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt").to(model.device)
+inputs = inputs.to(model.device, torch.float16)
 
 # autoregressively complete prompt
 output = model.generate(**inputs, max_new_tokens=100)
@@ -150,13 +148,13 @@ print(processor.decode(output[0], skip_special_tokens=True))
 LLaVa-OneVision can perform inference with multiple images as input, where images either belong to the same prompt or different prompts (in batched inference). For that you have to use checkpoints with an "ov" suffix. For multi-image cases, we recommend using a **nested list of images** as input. Otherwise, every image will be patchified and consume a lot of memory. Here is how you can do it:
 
 ```python
-import requests
-from PIL import Image
 import torch
+
 from transformers import AutoProcessor, LlavaOnevisionForConditionalGeneration
 
+
 # Load the model in half-precision
-model = LlavaOnevisionForConditionalGeneration.from_pretrained("llava-hf/llava-onevision-qwen2-7b-ov-hf", torch_dtype=torch.float16, device_map="auto")
+model = LlavaOnevisionForConditionalGeneration.from_pretrained("llava-hf/llava-onevision-qwen2-7b-ov-hf", device_map="auto")
 processor = AutoProcessor.from_pretrained("llava-hf/llava-onevision-qwen2-7b-ov-hf")
 
 # Prepare a batch of two prompts, where the first one is a multi-turn conversation and the second is not
@@ -219,7 +217,7 @@ import torch
 from transformers import AutoProcessor, LlavaOnevisionForConditionalGeneration
 
 # Load the model in half-precision
-model = LlavaOnevisionForConditionalGeneration.from_pretrained("llava-hf/llava-onevision-qwen2-7b-ov-hf", torch_dtype=torch.float16, device_map="auto")
+model = LlavaOnevisionForConditionalGeneration.from_pretrained("llava-hf/llava-onevision-qwen2-7b-ov-hf", device_map="auto")
 processor = AutoProcessor.from_pretrained("llava-hf/llava-onevision-qwen2-7b-ov-hf")
 
 video_path = hf_hub_download(repo_id="raushan-testing-hf/videos-test", filename="sample_demo_1.mp4", repo_type="dataset")
@@ -265,7 +263,8 @@ We value your feedback to help identify bugs before the full release! Check out 
 Simply change the snippet above with:
 
 ```python
-from transformers import LlavaOnevisionForConditionalGeneration, BitsAndBytesConfig
+from transformers import BitsAndBytesConfig, LlavaOnevisionForConditionalGeneration
+
 
 # specify how to quantize the model
 quantization_config = BitsAndBytesConfig(
@@ -284,13 +283,12 @@ First make sure to install flash-attn. Refer to the [original repository of Flas
 ```python
 from transformers import LlavaOnevisionForConditionalGeneration
 
+
 model = LlavaOnevisionForConditionalGeneration.from_pretrained(
     model_id,
-    torch_dtype=torch.float16,
     use_flash_attention_2=True
-).to(0)
+).to(0, device_map="auto")
 ```
-
 
 ## LlavaOnevisionConfig
 
@@ -299,15 +297,16 @@ model = LlavaOnevisionForConditionalGeneration.from_pretrained(
 ## LlavaOnevisionProcessor
 
 [[autodoc]] LlavaOnevisionProcessor
+    - __call__
 
 ## LlavaOnevisionImageProcessor
 
 [[autodoc]] LlavaOnevisionImageProcessor
     - preprocess
 
-## LlavaOnevisionImageProcessorFast
+## LlavaOnevisionImageProcessorPil
 
-[[autodoc]] LlavaOnevisionImageProcessorFast
+[[autodoc]] LlavaOnevisionImageProcessorPil
     - preprocess
 
 ## LlavaOnevisionVideoProcessor
@@ -322,3 +321,5 @@ model = LlavaOnevisionForConditionalGeneration.from_pretrained(
 
 [[autodoc]] LlavaOnevisionForConditionalGeneration
     - forward
+    - get_image_features
+    - get_video_features

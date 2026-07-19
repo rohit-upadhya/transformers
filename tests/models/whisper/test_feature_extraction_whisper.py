@@ -15,7 +15,6 @@
 
 import itertools
 import os
-import random
 import tempfile
 import unittest
 
@@ -30,27 +29,12 @@ from transformers.testing_utils import (
 )
 from transformers.utils.import_utils import is_torch_available
 
+from ...test_processing_common import floats_list
 from ...test_sequence_feature_extraction_common import SequenceFeatureExtractionTestMixin
 
 
 if is_torch_available():
     import torch
-
-global_rng = random.Random()
-
-
-def floats_list(shape, scale=1.0, rng=None, name=None):
-    """Creates a random float32 tensor"""
-    if rng is None:
-        rng = global_rng
-
-    values = []
-    for batch_idx in range(shape[0]):
-        values.append([])
-        for _ in range(shape[1]):
-            values[-1].append(rng.random() * scale)
-
-    return values
 
 
 class WhisperFeatureExtractionTester:
@@ -236,6 +220,39 @@ class WhisperFeatureExtractionTest(SequenceFeatureExtractionTestMixin, unittest.
         # features are not too different
         self.assertTrue(np.abs(diff).mean() <= 1e-4)
         self.assertTrue(np.abs(diff).max() <= 5e-3)
+
+    def test_feature_shape(self):
+        feature_extractor = self.feature_extraction_class(**self.feat_extract_tester.prepare_feat_extract_dict())
+        hop_length = feature_extractor.hop_length
+        test_inputs = np.random.randn(16000)
+
+        self.assertTrue(
+            feature_extractor(
+                [test_inputs[: hop_length * 5 + 1]],
+                return_attention_mask=True,
+                padding=False,
+                return_tensors="np",
+            ).attention_mask.shape[-1]
+            == 5
+        )
+        self.assertTrue(
+            feature_extractor(
+                [test_inputs[: hop_length * 5]],
+                return_attention_mask=True,
+                padding=False,
+                return_tensors="np",
+            ).attention_mask.shape[-1]
+            == 5
+        )
+        self.assertTrue(
+            feature_extractor(
+                [test_inputs[: hop_length * 5 - 1]],
+                return_attention_mask=True,
+                padding=False,
+                return_tensors="np",
+            ).attention_mask.shape[-1]
+            == 4
+        )
 
     @require_torch
     def test_double_precision_pad(self):

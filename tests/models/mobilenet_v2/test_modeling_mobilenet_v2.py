@@ -14,10 +14,11 @@
 """Testing suite for the PyTorch MobileNetV2 model."""
 
 import unittest
+from functools import cached_property
 
 from transformers import MobileNetV2Config
 from transformers.testing_utils import Expectations, require_torch, require_vision, slow, torch_device
-from transformers.utils import cached_property, is_torch_available, is_vision_available
+from transformers.utils import is_torch_available, is_vision_available
 
 from ...test_configuration_common import ConfigTester
 from ...test_modeling_common import ModelTesterMixin, floats_tensor, ids_tensor
@@ -33,7 +34,7 @@ if is_torch_available():
 if is_vision_available():
     from PIL import Image
 
-    from transformers import MobileNetV2ImageProcessor
+    from transformers import MobileNetV2ImageProcessorPil
 
 
 class MobileNetV2ConfigTester(ConfigTester):
@@ -200,11 +201,8 @@ class MobileNetV2ModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestC
         else {}
     )
 
-    test_pruning = False
     test_resize_embeddings = False
-    test_head_masking = False
     has_attentions = False
-    test_torch_exportable = True
 
     def setUp(self):
         self.model_tester = MobileNetV2ModelTester(self)
@@ -282,7 +280,9 @@ class MobileNetV2ModelIntegrationTest(unittest.TestCase):
     @cached_property
     def default_image_processor(self):
         return (
-            MobileNetV2ImageProcessor.from_pretrained("google/mobilenet_v2_1.0_224") if is_vision_available() else None
+            MobileNetV2ImageProcessorPil.from_pretrained("google/mobilenet_v2_1.0_224")
+            if is_vision_available()
+            else None
         )
 
     @slow
@@ -316,7 +316,7 @@ class MobileNetV2ModelIntegrationTest(unittest.TestCase):
         model = MobileNetV2ForSemanticSegmentation.from_pretrained("google/deeplabv3_mobilenet_v2_1.0_513")
         model = model.to(torch_device)
 
-        image_processor = MobileNetV2ImageProcessor.from_pretrained("google/deeplabv3_mobilenet_v2_1.0_513")
+        image_processor = MobileNetV2ImageProcessorPil.from_pretrained("google/deeplabv3_mobilenet_v2_1.0_513")
 
         image = prepare_img()
         inputs = image_processor(images=image, return_tensors="pt").to(torch_device)

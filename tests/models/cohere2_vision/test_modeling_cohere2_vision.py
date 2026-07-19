@@ -25,9 +25,9 @@ from transformers.testing_utils import (
     cleanup,
     get_device_properties,
     require_deterministic_for_xpu,
-    require_read_token,
     require_torch,
     require_torch_accelerator,
+    require_torch_large_accelerator,
     slow,
     torch_device,
 )
@@ -65,7 +65,7 @@ class Cohere2VisionText2TextModelTester:
             "vocab_size": 99,
             "hidden_size": 128,
             "intermediate_size": 37,
-            "num_hidden_layers": 4,
+            "num_hidden_layers": 2,
             "num_attention_heads": 4,
             "output_channels": 64,
             "hidden_act": "silu",
@@ -153,14 +153,12 @@ class Cohere2ModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMi
     pipeline_model_mapping = (
         {
             "image-text-to-text": Cohere2VisionForConditionalGeneration,
+            "any-to-any": Cohere2VisionForConditionalGeneration,
         }
         if is_torch_available()
         else {}
     )
-    fx_compatible = False
-    test_pruning = False
-    test_torchscript = False
-    test_head_masking = False
+
     _is_composite = True
 
     def setUp(self):
@@ -170,12 +168,7 @@ class Cohere2ModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMi
     def test_config(self):
         self.config_tester.run_common_tests()
 
-    @unittest.skip(reason="Siglip backbone uses the same initialization scheme as the Flax original implementation")
-    def test_initialization(self):
-        pass
 
-
-@require_read_token
 @require_torch
 class Cohere2IntegrationTest(unittest.TestCase):
     def setUp(self):
@@ -186,7 +179,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
 
     def get_model(self, dummy=True):
         device_type, major, _ = get_device_properties()
-        torch_dtype = torch.float16
+        dtype = torch.float16
 
         # too large to fit into A10
         config = Cohere2VisionConfig.from_pretrained(self.model_checkpoint)
@@ -197,7 +190,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
         model = Cohere2VisionForConditionalGeneration.from_pretrained(
             self.model_checkpoint,
             config=config,
-            torch_dtype=torch_dtype,
+            dtype=dtype,
             device_map="auto",
         )
         return model
@@ -228,7 +221,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
 
         EXPECTED_LOGITS = Expectations(
             {
-                ("xpu", 3): [0.4109, 0.1532, 0.8018, 2.1328, 0.5483],
+                ("xpu", 3): [2.4297, 1.6836, 1.8779, 2.1895, 1.9395],
                 # 4-bit
                 ("cuda", 7): [0.1097, 0.3481, 3.8340, 9.7969, 2.0488],
                 ("cuda", 8): [2.4277, 1.6875, 1.8789, 2.1875, 1.9375],
@@ -269,6 +262,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
 
         expected_outputs = Expectations(
             {
+                ("xpu", 3): "<|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|>",
                 ("cuda", 8): "<|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|>",
             }
         )  # fmt: skip
@@ -303,6 +297,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
 
         expected_outputs = Expectations(
             {
+                ("xpu", 3): '<|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|>',
                 ("cuda", 8): '<|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|>',
             }
         )  # fmt: skip
@@ -330,7 +325,10 @@ class Cohere2IntegrationTest(unittest.TestCase):
                 {
                     "role": "user",
                     "content": [
-                        {"type": "image", "url": "https://www.ilankelman.org/stopsigns/australia.jpg"},
+                        {
+                            "type": "image",
+                            "url": "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/tasks/australia.jpg",
+                        },
                         {"type": "text", "text": "Describe this image"},
                     ],
                 },
@@ -346,6 +344,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
         decoded_output = processor.decode(output[0, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
         expected_outputs = Expectations(
             {
+                ("xpu", 3): 'Dock stretches to calm',
                 ("cuda", 8): 'Dock stretches to calm',
             }
         )  # fmt: skip
@@ -362,6 +361,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
 
         expected_outputs = Expectations(
             {
+                ("xpu", 3): 'The image depicts a',
                 ("cuda", 8): 'The image depicts a',
             }
         )  # fmt: skip
@@ -420,6 +420,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
         # Batching seems to alter the output slightly, but it is also the case in the original implementation. This seems to be expected: https://github.com/huggingface/transformers/issues/23017#issuecomment-1649630232
         expected_outputs = Expectations(
             {
+                ("xpu", 3): '<|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|>',
                 ("cuda", 8): '<|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|>',
             }
         )  # fmt: skip
@@ -435,6 +436,7 @@ class Cohere2IntegrationTest(unittest.TestCase):
         decoded_output = processor.decode(output[1, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
         expected_outputs = Expectations(
             {
+                ("xpu", 3): '<|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|>',
                 ("cuda", 8): '<|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|><|CHATBOT_TOKEN|>',
             }
         )  # fmt: skip
@@ -445,3 +447,76 @@ class Cohere2IntegrationTest(unittest.TestCase):
             expected_output,
             f"Decoded output: {decoded_output}\nExpected output: {expected_output}",
         )
+
+
+@slow
+@require_torch_large_accelerator
+class Cohere2MoeVisionIntegrationTest(unittest.TestCase):
+    """Integration tests for Cohere2VisionForConditionalGeneration with the Command A+ Model."""
+
+    model_checkpoint = "/root/repos/moe/engines/command_a+_bf16"
+
+    def tearDown(self):
+        cleanup(torch_device, gc_collect=True)
+
+    def get_model(self):
+        return Cohere2VisionForConditionalGeneration.from_pretrained(
+            self.model_checkpoint,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        ).eval()
+
+    @slow
+    @require_torch_large_accelerator
+    def test_model_forward_vision(self):
+        """Forward pass with an image + text input; checks first token logit values."""
+        processor = AutoProcessor.from_pretrained(self.model_checkpoint)
+        model = self.get_model()
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "url": "http://images.cocodataset.org/val2017/000000039769.jpg"},
+                    {"type": "text", "text": "Please describe the image explicitly."},
+                ],
+            }
+        ]
+        inputs = processor.apply_chat_template(
+            messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
+        ).to(model.device, dtype=torch.bfloat16)
+
+        with torch.inference_mode():
+            output = model(**inputs)
+
+        actual_logits = output.logits[0, -1, :5].cpu().to(torch.float32)
+        expected_logits = torch.tensor([0.7383, 0.6172, 2.125, -67.5, -4.7813])
+        self.assertTrue(
+            torch.allclose(actual_logits, expected_logits, atol=0.1),
+            f"Actual logits: {actual_logits}\nExpected logits: {expected_logits}",
+        )
+
+    @slow
+    @require_torch_large_accelerator
+    def test_model_generate_vision(self):
+        """Image + text generation with the cohere2moe backbone."""
+        processor = AutoProcessor.from_pretrained(self.model_checkpoint)
+        model = self.get_model()
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "url": "http://images.cocodataset.org/val2017/000000039769.jpg"},
+                    {"type": "text", "text": "Please describe the image explicitly."},
+                ],
+            }
+        ]
+        inputs = processor.apply_chat_template(
+            messages, add_generation_prompt=True, tokenize=True, return_dict=True, return_tensors="pt"
+        ).to(model.device, dtype=torch.bfloat16)
+
+        with torch.no_grad():
+            gen_ids = model.generate(**inputs, max_new_tokens=20, do_sample=False)
+        decoded = processor.decode(gen_ids[0, inputs["input_ids"].shape[1] :], skip_special_tokens=True)
+
+        expected = "<|START_THINKING|><|END_THINKING|><|START_TEXT|>The image shows two tabby cats sleeping on a bright pink blanket or couch. Both"
+        self.assertEqual(decoded, expected, f"Decoded: {decoded!r}")

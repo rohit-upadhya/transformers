@@ -13,7 +13,7 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2025-02-27 and added to Hugging Face Transformers on 2025-05-07.*
+*This model was contributed to Hugging Face Transformers on 2025-05-07.*
 
 # Csm
 
@@ -37,19 +37,18 @@ The original csm-1b checkpoint is available under the [Sesame](https://huggingfa
 CSM can be used to simply generate speech from a text prompt:
 
 ```python
-import torch
-from transformers import CsmForConditionalGeneration, AutoProcessor
+from transformers import AutoProcessor, CsmForConditionalGeneration
+
 
 model_id = "sesame/csm-1b"
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # load the model and the processor
 processor = AutoProcessor.from_pretrained(model_id)
-model = CsmForConditionalGeneration.from_pretrained(model_id, device_map=device)
+model = CsmForConditionalGeneration.from_pretrained(model_id, device_map="auto")
 
 # prepare the inputs
 text = "[0]The past is just a story we tell ourselves." # `[0]` for speaker id 0
-inputs = processor(text, add_special_tokens=True).to(device)
+inputs = processor(text, add_special_tokens=True).to(model.device)
 
 # another equivalent way to prepare the inputs
 conversation = [
@@ -59,7 +58,7 @@ inputs = processor.apply_chat_template(
     conversation,
     tokenize=True,
     return_dict=True,
-).to(device)
+).to(model.device)
 
 # infer the model
 audio = model.generate(**inputs, output_audio=True)
@@ -71,16 +70,16 @@ processor.save_audio(audio, "example_without_context.wav")
 CSM can be used to generate speech given a conversation, allowing consistency in the voices and content-aware generation:
 
 ```python
-import torch
-from transformers import CsmForConditionalGeneration, AutoProcessor
-from datasets import load_dataset, Audio
+from datasets import Audio, load_dataset
+
+from transformers import AutoProcessor, CsmForConditionalGeneration
+
 
 model_id = "sesame/csm-1b"
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # load the model and the processor
 processor = AutoProcessor.from_pretrained(model_id)
-model = CsmForConditionalGeneration.from_pretrained(model_id, device_map=device)
+model = CsmForConditionalGeneration.from_pretrained(model_id, device_map="auto")
 
 # prepare the inputs
 ds = load_dataset("hf-internal-testing/dailytalk-dummy", split="train")
@@ -104,7 +103,7 @@ inputs = processor.apply_chat_template(
     conversation,
     tokenize=True,
     return_dict=True,
-).to(device)
+).to(model.device)
 
 # infer the model
 audio = model.generate(**inputs, output_audio=True)
@@ -116,18 +115,18 @@ processor.save_audio(audio, "example_with_context.wav")
 CSM supports batched inference!
 
 ```python
-import torch
-from transformers import CsmForConditionalGeneration, AutoProcessor
-from datasets import load_dataset, Audio
+from datasets import Audio, load_dataset
+
+from transformers import AutoProcessor, CsmForConditionalGeneration
+
 
 model_id = "sesame/csm-1b"
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # load the model and the processor
 processor = AutoProcessor.from_pretrained(model_id)
-model = CsmForConditionalGeneration.from_pretrained(model_id, device_map=device)
+model = CsmForConditionalGeneration.from_pretrained(model_id, device_map="auto")
 
-# prepare the inputs 
+# prepare the inputs
 ds = load_dataset("hf-internal-testing/dailytalk-dummy", split="train")
 # ensure the audio is 24kHz
 ds = ds.cast_column("audio", Audio(sampling_rate=24000))
@@ -161,7 +160,7 @@ inputs = processor.apply_chat_template(
     conversation,
     tokenize=True,
     return_dict=True,
-).to(device)
+).to(model.device)
 
 audio = model.generate(**inputs, output_audio=True)
 processor.save_audio(audio, [f"speech_batch_idx_{i}.wav" for i in range(len(audio))])
@@ -172,20 +171,21 @@ processor.save_audio(audio, [f"speech_batch_idx_{i}.wav" for i in range(len(audi
 CSM supports full-graph compilation with CUDA graphs!
 
 ```python
+
 import torch
-import copy
-from transformers import CsmForConditionalGeneration, AutoProcessor
 from datasets import load_dataset
 
+from transformers import AutoProcessor, CsmForConditionalGeneration
+
+
 model_id = "sesame/csm-1b"
-device = "cuda"
 
 # set logs to ensure no recompilation and graph breaks
 torch._logging.set_logs(graph_breaks=True, recompiles=True, cudagraphs=True)
 
 # load the model and the processor
 processor = AutoProcessor.from_pretrained(model_id)
-model = CsmForConditionalGeneration.from_pretrained(model_id, device_map=device)
+model = CsmForConditionalGeneration.from_pretrained(model_id, device_map="auto")
 
 # use static cache, enabling automatically torch compile with fullgraph and reduce-overhead
 model.generation_config.max_length = 250 # big enough to avoid recompilation
@@ -207,7 +207,7 @@ class TimerContext:
         self.name = name
         self.start_event = None
         self.end_event = None
-        
+
     def __enter__(self):
         # Use CUDA events for more accurate GPU timing
         self.start_event = torch.cuda.Event(enable_timing=True)
@@ -221,7 +221,7 @@ class TimerContext:
         elapsed_time = self.start_event.elapsed_time(self.end_event) / 1000.0
         print(f"{self.name} time: {elapsed_time:.4f} seconds")
 
-# prepare the inputs 
+# prepare the inputs
 ds = load_dataset("hf-internal-testing/dailytalk-dummy", split="train")
 
 conversation = [
@@ -251,7 +251,7 @@ padded_inputs_1 = processor.apply_chat_template(
     conversation,
     tokenize=True,
     return_dict=True,
-).to(device)
+).to(model.device)
 
 print("\n" + "="*50)
 print("First generation - compiling and recording CUDA graphs...")
@@ -292,7 +292,7 @@ padded_inputs_2 = processor.apply_chat_template(
     conversation,
     tokenize=True,
     return_dict=True,
-).to(device)
+).to(model.device)
 
 print("\n" + "="*50)
 print("Generation with other inputs!")
@@ -306,15 +306,16 @@ print("="*50)
 CSM Transformers integration supports training!
 
 ```python
-from transformers import CsmForConditionalGeneration, AutoProcessor
-from datasets import load_dataset, Audio
+from datasets import Audio, load_dataset
+
+from transformers import AutoProcessor, CsmForConditionalGeneration
+
 
 model_id = "sesame/csm-1b"
-device = "cuda"
 
 # load the model and the processor
 processor = AutoProcessor.from_pretrained(model_id)
-model = CsmForConditionalGeneration.from_pretrained(model_id, device_map=device)
+model = CsmForConditionalGeneration.from_pretrained(model_id, device_map="auto")
 model.train()
 model.codec_model.eval()
 
@@ -337,7 +338,7 @@ inputs = processor.apply_chat_template(
     tokenize=True,
     return_dict=True,
     output_labels=True,
-).to(device)
+).to(model.device)
 
 out = model(**inputs)
 out.loss.backward()
@@ -345,7 +346,6 @@ out.loss.backward()
 
 This model was contributed by [Eustache Le Bihan](https://huggingface.co/eustlb).
 The original code can be found [here](https://github.com/SesameAILabs/csm).
-
 
 ## CsmConfig
 

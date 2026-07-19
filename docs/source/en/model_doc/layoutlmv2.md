@@ -13,13 +13,10 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2020-12-29 and added to Hugging Face Transformers on 2021-08-30.*
+*This model was published in HF papers on 2020-12-29 and contributed to Hugging Face Transformers on 2021-08-30.*
 
 # LayoutLMV2
 
-<div class="flex flex-wrap space-x-1">
-<img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-</div>
 
 ## Overview
 
@@ -55,10 +52,12 @@ this https URL.*
 
 LayoutLMv2 depends on `detectron2`, `torchvision` and `tesseract`. Run the
 following to install them:
+
 ```bash
 python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
 python -m pip install torchvision tesseract
 ```
+
 (If you are developing for LayoutLMv2, note that passing the doctests also requires the installation of these packages.)
 
 ## Usage tips
@@ -101,6 +100,7 @@ follows:
 
 ```python
 from PIL import Image
+
 
 image = Image.open(
     "name_of_your_document - can be a png, jpg, etc. of your documents (PDFs must be converted to images)."
@@ -145,7 +145,6 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 - See also: [Question answering task guide](../tasks/question_answering)
 - See also: [Document question answering task guide](../tasks/document_question_answering)
 
-
 <PipelineTag pipeline="token-classification"/>
 
 - A notebook on how to [finetune LayoutLMv2 for token-classification on CORD dataset](https://colab.research.google.com/github/NielsRogge/Transformers-Tutorials/blob/master/LayoutLMv2/CORD/Fine_tuning_LayoutLMv2ForTokenClassification_on_CORD.ipynb).
@@ -162,7 +161,8 @@ for a multi-modal model like LayoutLMv2. Note that you can still use both separa
 modality.
 
 ```python
-from transformers import LayoutLMv2ImageProcessor, LayoutLMv2TokenizerFast, LayoutLMv2Processor
+from transformers import LayoutLMv2ImageProcessor, LayoutLMv2Processor, LayoutLMv2TokenizerFast
+
 
 image_processor = LayoutLMv2ImageProcessor()  # apply_ocr is set to True by default
 tokenizer = LayoutLMv2TokenizerFast.from_pretrained("microsoft/layoutlmv2-base-uncased")
@@ -193,8 +193,10 @@ This is the simplest case, in which the processor (actually the image processor)
 the words and normalized bounding boxes.
 
 ```python
-from transformers import LayoutLMv2Processor
 from PIL import Image
+
+from transformers import LayoutLMv2Processor
+
 
 processor = LayoutLMv2Processor.from_pretrained("microsoft/layoutlmv2-base-uncased")
 
@@ -215,8 +217,10 @@ In case one wants to do OCR themselves, one can initialize the image processor w
 the processor.
 
 ```python
-from transformers import LayoutLMv2Processor
 from PIL import Image
+
+from transformers import LayoutLMv2Processor
+
 
 processor = LayoutLMv2Processor.from_pretrained("microsoft/layoutlmv2-base-uncased", revision="no_ocr")
 
@@ -225,7 +229,7 @@ image = Image.open(
 ).convert("RGB")
 words = ["hello", "world"]
 boxes = [[1, 2, 3, 4], [5, 6, 7, 8]]  # make sure to normalize your bounding boxes
-encoding = processor(image, words, boxes=boxes, return_tensors="pt")
+encoding = processor(image, words, boxes=boxes, return_tensors="pt").to(model.device)
 print(encoding.keys())
 # dict_keys(['input_ids', 'token_type_ids', 'attention_mask', 'bbox', 'image'])
 ```
@@ -239,8 +243,10 @@ will only label the first wordpiece of a word, and label the remaining wordpiece
 initialize the tokenizer with `only_label_first_subword` set to `False`.
 
 ```python
-from transformers import LayoutLMv2Processor
 from PIL import Image
+
+from transformers import LayoutLMv2Processor
+
 
 processor = LayoutLMv2Processor.from_pretrained("microsoft/layoutlmv2-base-uncased", revision="no_ocr")
 
@@ -250,7 +256,7 @@ image = Image.open(
 words = ["hello", "world"]
 boxes = [[1, 2, 3, 4], [5, 6, 7, 8]]  # make sure to normalize your bounding boxes
 word_labels = [1, 2]
-encoding = processor(image, words, boxes=boxes, word_labels=word_labels, return_tensors="pt")
+encoding = processor(image, words, boxes=boxes, word_labels=word_labels, return_tensors="pt").to(model.device)
 print(encoding.keys())
 # dict_keys(['input_ids', 'token_type_ids', 'attention_mask', 'bbox', 'labels', 'image'])
 ```
@@ -261,8 +267,10 @@ For visual question answering tasks (such as DocVQA), you can provide a question
 processor will apply OCR on the image, and create [CLS] question tokens [SEP] word tokens [SEP].
 
 ```python
-from transformers import LayoutLMv2Processor
 from PIL import Image
+
+from transformers import LayoutLMv2Processor
+
 
 processor = LayoutLMv2Processor.from_pretrained("microsoft/layoutlmv2-base-uncased")
 
@@ -270,7 +278,7 @@ image = Image.open(
     "name_of_your_document - can be a png, jpg, etc. of your documents (PDFs must be converted to images)."
 ).convert("RGB")
 question = "What's his name?"
-encoding = processor(image, question, return_tensors="pt")
+encoding = processor(image, question, return_tensors="pt").to(model.device)
 print(encoding.keys())
 # dict_keys(['input_ids', 'token_type_ids', 'attention_mask', 'bbox', 'image'])
 ```
@@ -281,8 +289,10 @@ For visual question answering tasks (such as DocVQA), you can provide a question
 perform OCR yourself, you can provide your own words and (normalized) bounding boxes to the processor.
 
 ```python
-from transformers import LayoutLMv2Processor
 from PIL import Image
+
+from transformers import LayoutLMv2Processor
+
 
 processor = LayoutLMv2Processor.from_pretrained("microsoft/layoutlmv2-base-uncased", revision="no_ocr")
 
@@ -292,7 +302,7 @@ image = Image.open(
 question = "What's his name?"
 words = ["hello", "world"]
 boxes = [[1, 2, 3, 4], [5, 6, 7, 8]]  # make sure to normalize your bounding boxes
-encoding = processor(image, question, words, boxes=boxes, return_tensors="pt")
+encoding = processor(image, question, words, boxes=boxes, return_tensors="pt").to(model.device)
 print(encoding.keys())
 # dict_keys(['input_ids', 'token_type_ids', 'attention_mask', 'bbox', 'image'])
 ```
@@ -301,19 +311,14 @@ print(encoding.keys())
 
 [[autodoc]] LayoutLMv2Config
 
-## LayoutLMv2FeatureExtractor
-
-[[autodoc]] LayoutLMv2FeatureExtractor
-    - __call__
-
 ## LayoutLMv2ImageProcessor
 
 [[autodoc]] LayoutLMv2ImageProcessor
     - preprocess
 
-## LayoutLMv2ImageProcessorFast
+## LayoutLMv2ImageProcessorPil
 
-[[autodoc]] LayoutLMv2ImageProcessorFast
+[[autodoc]] LayoutLMv2ImageProcessorPil
     - preprocess
 
 ## LayoutLMv2Tokenizer

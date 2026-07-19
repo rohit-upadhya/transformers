@@ -13,17 +13,12 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2021-03-11 and added to Hugging Face Transformers on 2021-06-30.*
+*This model was published in HF papers on 2021-03-11 and contributed to Hugging Face Transformers on 2021-06-30.*
 
-<div style="float: right;">
-    <div class="flex flex-wrap space-x-1">
-        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-    </div>
-</div>
 
 # CANINE
 
-[CANINE](https://huggingface.co/papers/2103.06874) is a tokenization-free Transformer. It skips the usual step of splitting text into subwords or wordpieces and processes text character by character. That means it works directly with raw Unicode, making it especially useful for languages with complex or inconsistent tokenization rules and even noisy inputs like typos. Since working with characters means handling longer sequences, CANINE uses a smart trick. The model compresses the input early on (called downsampling) so the transformer doesn’t have to process every character individually. This keeps things fast and efficient.
+[CANINE](https://huggingface.co/papers/2103.06874) is a tokenization-free Transformer. It skips the usual step of splitting text into subwords or wordpieces and processes text character by character. That means it works directly with raw Unicode, making it especially useful for languages with complex or inconsistent tokenization rules and even noisy inputs like typos. Since working with characters means handling longer sequences, CANINE uses a smart trick. The model compresses the input early on (called downsampling) so the transformer doesn't have to process every character individually. This keeps things fast and efficient.
 
 You can find all the original CANINE checkpoints under the [Google](https://huggingface.co/google?search_models=canine) organization.
 
@@ -35,14 +30,14 @@ The example below demonstrates how to generate embeddings with [`Pipeline`], [`A
 <hfoptions id="usage">
 <hfoption id="Pipeline">
 
-```py
-import torch
+```python
 from transformers import pipeline
+
 
 pipeline = pipeline(
     task="feature-extraction",
     model="google/canine-c",
-    device=0,               
+    device=0,
 )
 
 pipeline("Plant create energy through a process known as photosynthesis.")
@@ -51,25 +46,20 @@ pipeline("Plant create energy through a process known as photosynthesis.")
 </hfoption>
 <hfoption id="AutoModel">
 
-```py
+```python
 import torch
+
 from transformers import AutoModel
 
-model = AutoModel.from_pretrained("google/canine-c")
+
+model = AutoModel.from_pretrained("google/canine-c", device_map="auto")
 
 text = "Plant create energy through a process known as photosynthesis."
 input_ids = torch.tensor([[ord(char) for char in text]])
 
-outputs = model(input_ids)  
+outputs = model(input_ids)
 pooled_output = outputs.pooler_output
 sequence_output = outputs.last_hidden_state
-```
-
-</hfoption>
-<hfoption id="transformers CLI">
-
-```bash
-echo -e "Plant create energy through a process known as photosynthesis." | transformers-cli run --task feature-extraction --model google/canine-c --device 0
 ```
 
 </hfoption>
@@ -81,11 +71,12 @@ echo -e "Plant create energy through a process known as photosynthesis." | trans
 
     ```py
     from transformers import AutoTokenizer, AutoModel
-    
+
     tokenizer = AutoTokenizer("google/canine-c")
     inputs = ["Life is like a box of chocolates.", "You never know what you gonna get."]
-    encoding = tokenizer(inputs, padding="longest", truncation=True, return_tensors="pt")
+    encoding = tokenizer(inputs, padding="longest", truncation=True, return_tensors="pt").to(model.device)
     ```
+
 - CANINE is primarily designed to be fine-tuned on a downstream task. The pretrained model can be used for either masked language modeling or next sentence prediction.
 
 ## CanineConfig

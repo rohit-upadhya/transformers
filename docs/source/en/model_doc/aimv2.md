@@ -13,7 +13,7 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2024-11-21 and added to Hugging Face Transformers on 2025-07-08.*
+*This model was published in HF papers on 2024-11-21 and contributed to Hugging Face Transformers on 2025-07-08.*
 
 # AIMv2
 
@@ -25,7 +25,6 @@ The abstract from the paper is the following:
 
 *We introduce a novel method for pre-training of large-scale vision encoders. Building on recent advancements in autoregressive pre-training of vision models, we extend this framework to a multimodal setting, i.e., images and text. In this paper, we present AIMV2, a family of generalist vision encoders characterized by a straightforward pre-training process, scalability, and remarkable performance across a range of downstream tasks. This is achieved by pairing the vision encoder with a multimodal decoder that autoregressively generates raw image patches and text tokens. Our encoders excel not only in multimodal evaluations but also in vision benchmarks such as localization, grounding, and classification. Notably, our AIMV2-3B encoder achieves 89.5% accuracy on ImageNet-1k with a frozen trunk. Furthermore, AIMV2 consistently outperforms state-of-the-art contrastive models (e.g., CLIP, SigLIP) in multimodal image understanding across diverse settings.*
 
-
 This model was contributed by [Yaswanth Gali](https://huggingface.co/yaswanthgali).
 The original code can be found [here](https://github.com/apple/ml-aim).
 
@@ -36,15 +35,17 @@ Here is an example of Image Feature Extraction using specific checkpoints on res
 ```python
 import requests
 from PIL import Image
+
 from transformers import AutoImageProcessor, AutoModel
+
 
 url = "http://images.cocodataset.org/val2017/000000039769.jpg"
 image = Image.open(requests.get(url, stream=True).raw)
 
 processor = AutoImageProcessor.from_pretrained("apple/aimv2-large-patch14-native")
-model = AutoModel.from_pretrained("apple/aimv2-large-patch14-native")
+model = AutoModel.from_pretrained("apple/aimv2-large-patch14-native", device_map="auto")
 
-inputs = processor(images=image, return_tensors="pt")
+inputs = processor(images=image, return_tensors="pt").to(model.device)
 outputs = model(**inputs)
 ```
 
@@ -53,14 +54,16 @@ Here is an example of a checkpoint performing zero-shot classification:
 ```python
 import requests
 from PIL import Image
-from transformers import AutoProcessor, AutoModel
+
+from transformers import AutoModel, AutoProcessor
+
 
 url = "http://images.cocodataset.org/val2017/000000039769.jpg"
 image = Image.open(requests.get(url, stream=True).raw)
 text = ["Picture of a dog.", "Picture of a cat.", "Picture of a horse."]
 
 processor = AutoProcessor.from_pretrained("apple/aimv2-large-patch14-224-lit")
-model = AutoModel.from_pretrained("apple/aimv2-large-patch14-224-lit")
+model = AutoModel.from_pretrained("apple/aimv2-large-patch14-224-lit", device_map="auto")
 
 inputs = processor(
     images=image,
@@ -90,6 +93,8 @@ probs = outputs.logits_per_image.softmax(dim=-1)
 
 [[autodoc]] Aimv2Model
     - forward
+    - get_text_features
+    - get_image_features
 
 ## Aimv2VisionModel
 
@@ -100,6 +105,3 @@ probs = outputs.logits_per_image.softmax(dim=-1)
 
 [[autodoc]] Aimv2TextModel
     - forward
-
-</pt>
-<tf>

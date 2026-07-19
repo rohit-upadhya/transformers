@@ -13,7 +13,7 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2024-10-17 and added to Hugging Face Transformers on 2025-04-29.*
+*This model was published in HF papers on 2024-10-17 and contributed to Hugging Face Transformers on 2025-04-29.*
 
 # D-FINE
 
@@ -24,37 +24,39 @@ Yansong Peng, Hebei Li, Peixi Wu, Yueyi Zhang, Xiaoyan Sun, Feng Wu
 
 The abstract from the paper is the following:
 
-*We introduce D-FINE, a powerful real-time object detector that achieves outstanding localization precision by redefining the bounding box regression task in DETR models. D-FINE comprises two key components: Fine-grained Distribution Refinement (FDR) and Global Optimal Localization Self-Distillation (GO-LSD). 
+*We introduce D-FINE, a powerful real-time object detector that achieves outstanding localization precision by redefining the bounding box regression task in DETR models. D-FINE comprises two key components: Fine-grained Distribution Refinement (FDR) and Global Optimal Localization Self-Distillation (GO-LSD).
 FDR transforms the regression process from predicting fixed coordinates to iteratively refining probability distributions, providing a fine-grained intermediate representation that significantly enhances localization accuracy. GO-LSD is a bidirectional optimization strategy that transfers localization knowledge from refined distributions to shallower layers through self-distillation, while also simplifying the residual prediction tasks for deeper layers. Additionally, D-FINE incorporates lightweight optimizations in computationally intensive modules and operations, achieving a better balance between speed and accuracy. Specifically, D-FINE-L / X achieves 54.0% / 55.8% AP on the COCO dataset at 124 / 78 FPS on an NVIDIA T4 GPU. When pretrained on Objects365, D-FINE-L / X attains 57.1% / 59.3% AP, surpassing all existing real-time detectors. Furthermore, our method significantly enhances the performance of a wide range of DETR models by up to 5.3% AP with negligible extra parameters and training costs. Our code and pretrained models: this https URL.*
 
-This model was contributed by [VladOS95-cyber](https://github.com/VladOS95-cyber). 
+This model was contributed by [VladOS95-cyber](https://github.com/VladOS95-cyber).
 The original code can be found [here](https://github.com/Peterande/D-FINE).
 
-## Usage tips 
+## Usage tips
 
 ```python
->>> import torch
->>> from transformers.image_utils import load_image
->>> from transformers import DFineForObjectDetection, AutoImageProcessor
+import torch
 
->>> url = 'http://images.cocodataset.org/val2017/000000039769.jpg'
->>> image = load_image(url)
+from transformers import AutoImageProcessor, DFineForObjectDetection
+from transformers.image_utils import load_image
 
->>> image_processor = AutoImageProcessor.from_pretrained("ustc-community/dfine_x_coco")
->>> model = DFineForObjectDetection.from_pretrained("ustc-community/dfine_x_coco")
 
->>> inputs = image_processor(images=image, return_tensors="pt")
+url = 'http://images.cocodataset.org/val2017/000000039769.jpg'
+image = load_image(url)
 
->>> with torch.no_grad():
-...     outputs = model(**inputs)
+image_processor = AutoImageProcessor.from_pretrained("ustc-community/dfine_x_coco")
+model = DFineForObjectDetection.from_pretrained("ustc-community/dfine_x_coco", device_map="auto")
 
->>> results = image_processor.post_process_object_detection(outputs, target_sizes=[(image.height, image.width)], threshold=0.5)
+inputs = image_processor(images=image, return_tensors="pt").to(model.device)
 
->>> for result in results:
-...     for score, label_id, box in zip(result["scores"], result["labels"], result["boxes"]):
-...         score, label = score.item(), label_id.item()
-...         box = [round(i, 2) for i in box.tolist()]
-...         print(f"{model.config.id2label[label]}: {score:.2f} {box}")
+with torch.no_grad():
+    outputs = model(**inputs)
+
+results = image_processor.post_process_object_detection(outputs, target_sizes=[(image.height, image.width)], threshold=0.5)
+
+for result in results:
+    for score, label_id, box in zip(result["scores"], result["labels"], result["boxes"]):
+        score, label = score.item(), label_id.item()
+        box = [round(i, 2) for i in box.tolist()]
+        print(f"{model.config.id2label[label]}: {score:.2f} {box}")
 cat: 0.96 [344.49, 23.4, 639.84, 374.27]
 cat: 0.96 [11.71, 53.52, 316.64, 472.33]
 remote: 0.95 [40.46, 73.7, 175.62, 117.57]

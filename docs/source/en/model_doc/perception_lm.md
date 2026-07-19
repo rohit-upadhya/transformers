@@ -13,7 +13,7 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2025-04-17 and added to Hugging Face Transformers on 2025-07-11.*
+*This model was published in HF papers on 2025-04-17 and contributed to Hugging Face Transformers on 2025-07-11.*
 
 # PerceptionLM
 
@@ -38,10 +38,8 @@ video captions. Additionally, we introduce PLM–VideoBench, a suite for evaluat
 understanding tasks focusing on the ability to reason about “what”, “where”, “when”, and “how” of a
 video. We make our work fully reproducible by providing data, training recipes, code & models.*
 
-
 This model was contributed by [shumingh](https://huggingface.co/shumingh).
 The original code can be found [here](https://github.com/facebookresearch/perception_models).
-
 
 ## PerceptionLMConfig
 
@@ -50,10 +48,12 @@ The original code can be found [here](https://github.com/facebookresearch/percep
 ## PerceptionLMProcessor
 
 [[autodoc]] PerceptionLMProcessor
+    - __call__
 
-## PerceptionLMImageProcessorFast
+## PerceptionLMImageProcessor
 
-[[autodoc]] PerceptionLMImageProcessorFast
+[[autodoc]] PerceptionLMImageProcessor
+    - preprocess
 
 ## PerceptionLMVideoProcessor
 

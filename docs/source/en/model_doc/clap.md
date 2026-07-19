@@ -13,13 +13,8 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-*This model was released on 2022-11-12 and added to Hugging Face Transformers on 2023-02-16.*
+*This model was published in HF papers on 2022-11-12 and contributed to Hugging Face Transformers on 2023-02-16.*
 
-<div style="float: right;">
-  <div class="flex flex-wrap space-x-1">
-    <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
-  </div>
-</div>
 
 # CLAP
 
@@ -41,14 +36,16 @@ The example below demonstrates how to extract text embeddings with the [`AutoMod
 
 ```python
 import torch
-from transformers import AutoTokenizer, AutoModel
 
-model = AutoModel.from_pretrained("laion/clap-htsat-unfused", torch_dtype=torch.float16, device_map="auto")
+from transformers import AutoModel, AutoTokenizer
+
+
+model = AutoModel.from_pretrained("laion/clap-htsat-unfused", device_map="auto")
 tokenizer = AutoTokenizer.from_pretrained("laion/clap-htsat-unfused")
 
 texts = ["the sound of a cat", "the sound of a dog", "music playing"]
 
-inputs = tokenizer(texts, padding=True, return_tensors="pt").to("cuda")
+inputs = tokenizer(texts, padding=True, return_tensors="pt").to(model.device)
 
 with torch.no_grad():
     text_features = model.get_text_features(**inputs)
@@ -63,7 +60,6 @@ print(f"Text embeddings: {text_features}")
 ## ClapConfig
 
 [[autodoc]] ClapConfig
-    - from_text_audio_configs
 
 ## ClapTextConfig
 
@@ -80,6 +76,7 @@ print(f"Text embeddings: {text_features}")
 ## ClapProcessor
 
 [[autodoc]] ClapProcessor
+    - __call__
 
 ## ClapModel
 
